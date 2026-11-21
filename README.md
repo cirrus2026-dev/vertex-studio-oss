@@ -109,6 +109,12 @@ Add this entry to your AI Coding Agent's `mcp_config.json`:
 
 ### Option 3: Agent Skills (`/ask-argon` & `/ask-carbon`)
 Copy `skills/ask-argon` and `skills/ask-carbon` into your agent's skills directory:
+
+| Skill Command | Target Web Interface | Best For |
+| :--- | :--- | :--- |
+| **`/ask-argon`** | **Gemini Web** (`https://gemini.google.com/app`) | Free everyday web usage, quick code reviews & architecture Q&A |
+| **`/ask-carbon`** | **Google Cloud Studio** (`console.cloud.google.com`) | Vertex AI Studio Multimodal / GCP project workflows |
+
 ```bash
 # Dispatch to Gemini Web (Argon)
 python skills/ask-argon/scripts/dispatch.py --prompt "Audit this file for bugs" --files app.py

@@ -109,7 +109,13 @@ start_ai_bridge.bat
 ---
 
 ### วิธีที่ 3: ใช้งาน Agent Skills (`/ask-argon` & `/ask-carbon`)
-คัดลอกโฟลเดอร์ `skills/ask-argon` และ `skills/ask-carbon` ไปวางในโฟลเดอร์ Skills ของ Agent เพื่อเรียกใช้งานด้วยคำสั่งสั้นๆ เช่น:
+คัดลอกโฟลเดอร์ `skills/ask-argon` และ `skills/ask-carbon` ไปวางในโฟลเดอร์ Skills ของ Agent เพื่อเรียกใช้งานด้วยคำสั่งสั้นๆ:
+
+| คำสั่งสกิล | หน้าเว็บเป้าหมายที่เชื่อมต่อ | เหมาะสำหรับ |
+| :--- | :--- | :--- |
+| **`/ask-argon`** | **Gemini Web** (`https://gemini.google.com/app`) | ใช้งานหน้าเว็บ Gemini ฟรีทั่วไป, ตรวจโค้ด, ถาม-ตอบสถาปัตยกรรม |
+| **`/ask-carbon`** | **Google Cloud Studio** (`console.cloud.google.com`) | ใช้งานผ่าน Vertex AI Studio / โปรเจกต์บน Google Cloud |
+
 ```bash
 # ส่งงานให้ Gemini Web (Argon)
 python skills/ask-argon/scripts/dispatch.py --prompt "ช่วยวิเคราะห์หาบั๊กในไฟล์ที่แนบ" --files app.py

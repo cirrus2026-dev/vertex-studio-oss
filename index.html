@@ -1,0 +1,3027 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vertex AI Cloud Studio - Gemini 4 &amp; 3.8</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Sarabun', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #131314; color: #e3e3e3; }
+    .model-menu { background: #1e1f20; border: 1px solid #3c4043; }
+    .model-sub { background: #282a2c; border: 1px solid #3c4043; }
+    .submenu-wrapper {
+      position: absolute;
+      left: 100%;
+      bottom: -6px;
+      padding-left: 8px; /* สะพานเชื่อม hover ไร้รอยต่อ เมาส์ไม่หลุด */
+      display: none;
+      z-index: 100;
+    }
+    .model-row:hover .submenu-wrapper,
+    .model-row.is-active .submenu-wrapper,
+    .web-thinking-row:hover .submenu-wrapper,
+    .web-thinking-row.is-active .submenu-wrapper {
+      display: block;
+    }
+
+    /* Markdown & Code Syntax Styling - Gemini Web (Argon Dark) Theme */
+    .markdown-body { color: #e3e3e3; word-wrap: break-word; font-size: 15px; line-height: 1.75; }
+    .markdown-body > *:first-child { margin-top: 0; }
+    .markdown-body > *:last-child { margin-bottom: 0; }
+    .markdown-body h1 { font-size: 1.4rem; font-weight: 700; color: #ffffff; margin: 1.25rem 0 0.6rem; border-bottom: 1px solid #282a2c; padding-bottom: 0.35rem; }
+    .markdown-body h2 { font-size: 1.25rem; font-weight: 700; color: #ffffff; margin: 1.15rem 0 0.5rem; border-bottom: 1px solid #282a2c; padding-bottom: 0.3rem; }
+    .markdown-body h3 { font-size: 1.1rem; font-weight: 700; color: #ffffff; margin: 1rem 0 0.45rem; }
+    .markdown-body h4 { font-size: 1rem; font-weight: 600; color: #f1f3f4; margin: 0.85rem 0 0.4rem; }
+    .markdown-body p { margin: 0.65rem 0; line-height: 1.75; color: #e3e3e3; }
+    .markdown-body ul { list-style-type: disc; padding-left: 1.8rem; margin: 0.5rem 0; }
+    .markdown-body ul ul { list-style-type: circle; padding-left: 1.5rem; margin: 0.25rem 0; }
+    .markdown-body ul ul ul { list-style-type: square; padding-left: 1.35rem; margin: 0.2rem 0; }
+    .markdown-body ol { list-style-type: decimal; padding-left: 1.8rem; margin: 0.5rem 0; }
+    .markdown-body ol ol { list-style-type: lower-alpha; padding-left: 1.5rem; margin: 0.25rem 0; }
+    .markdown-body ol ul { list-style-type: circle; padding-left: 1.5rem; margin: 0.25rem 0; }
+    .markdown-body ul ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.25rem 0; }
+    .markdown-body li { margin: 0.35rem 0; line-height: 1.75; color: #e3e3e3; }
+    .markdown-body li > p { margin: 0.2rem 0; }
+    .markdown-body li strong, .markdown-body p strong { color: #ffffff; font-weight: 600; }
+    .markdown-body blockquote { border-left: 3px solid #8ab4f8; background: #1e1f20; padding: 0.6rem 1rem; margin: 0.85rem 0; border-radius: 0 0.75rem 0.75rem 0; color: #c4c7c5; }
+    .markdown-body a { color: #8ab4f8; text-decoration: underline; }
+    .markdown-body hr { border: 0; border-top: 1px solid #282a2c; margin: 1.25rem 0; }
+    .markdown-body table { width: 100%; border-collapse: collapse; margin: 0.85rem 0; font-size: 0.9em; overflow-x: auto; display: block; }
+    .markdown-body th { background: #282a2c; color: #ffffff; font-weight: 700; text-align: left; padding: 0.6rem 0.85rem; border: 1px solid #3c4043; }
+    .markdown-body td { padding: 0.55rem 0.85rem; border: 1px solid #3c4043; background: #1e1f20; color: #e3e3e3; }
+    .markdown-body :not(pre) > code { background: #282a2c; color: #8ab4f8; padding: 0.15rem 0.45rem; border-radius: 0.375rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.88em; border: 1px solid #3c4043; }
+    .code-block-wrapper { margin: 0.85rem 0; border-radius: 0.875rem; overflow: hidden; border: 1px solid #3c4043; background: #1e1f20; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); }
+    .code-block-header { display: flex; align-items: center; justify-content: space-between; padding: 0.45rem 1rem; background: #282a2c; border-bottom: 1px solid #3c4043; font-size: 0.75rem; color: #c4c7c5; }
+    .markdown-body pre { margin: 0; padding: 1rem; overflow-x: auto; background: #1e1f20 !important; }
+    .markdown-body pre code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; line-height: 1.6; background: transparent !important; padding: 0; color: #e3e3e3; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3c4043; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #5e5e5e; }
+  </style>
+
+  <!-- Built-in Fast Folder Picker Modal (Hybrid: Web Browser + Native Windows Dialog) -->
+  <div id="folderPickerModal" class="hidden fixed inset-0 z-[110] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl rounded-3xl bg-[#1e1f20] border border-[#3c4043] shadow-2xl overflow-hidden flex flex-col max-h-[82vh]">
+      <!-- Header -->
+      <div class="px-5 py-3.5 bg-[#282a2c] border-b border-[#3c4043] flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-base">📂</span>
+          <h3 id="fpModalTitle" class="text-sm font-bold text-white">เลือกโฟลเดอร์งาน (Select Workspace)</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="fpNativeOsBtn" type="button" onclick="triggerNativeOsFolderDialog()" class="px-2.5 py-1 rounded-xl bg-[#1e1f20] hover:bg-[#37393b] border border-[#3c4043] text-[11px] font-semibold text-[#8ab4f8] transition" title="เปิดหน้าต่างเลือกโฟลเดอร์ของ Windows โดยตรง">
+            🪟 Windows Explorer
+          </button>
+          <button type="button" onclick="closeFolderPickerModal()" class="p-1.5 rounded-xl bg-[#1e1f20] hover:bg-[#37393b] border border-[#3c4043] text-[#c4c7c5] hover:text-white text-xs transition">✕</button>
+        </div>
+      </div>
+
+      <!-- Current Path Bar & Up Button -->
+      <div class="px-5 py-2.5 bg-[#131314] border-b border-[#282a2c] flex items-center gap-2">
+        <button id="fpUpBtn" type="button" onclick="browseParentDir()" class="px-2.5 py-1.5 rounded-xl bg-[#282a2c] hover:bg-[#37393b] border border-[#3c4043] text-xs font-bold text-[#e3e3e3] transition" title="ขึ้นไปโฟลเดอร์แม่">⬆ ..</button>
+        <input id="fpPathInput" type="text" class="flex-1 bg-[#1e1f20] border border-[#3c4043] focus:border-[#8ab4f8] rounded-xl px-3 py-1.5 font-mono text-xs text-[#8ab4f8] focus:outline-none" onkeydown="if(event.key==='Enter'){event.preventDefault();browseDir(this.value);}" />
+        <button type="button" onclick="browseDir(document.getElementById('fpPathInput').value)" class="px-3 py-1.5 rounded-xl bg-[#282a2c] hover:bg-[#37393b] border border-[#3c4043] text-xs font-semibold text-white transition">Go</button>
+      </div>
+
+      <!-- Drives & Shortcuts Strip -->
+      <div id="fpQuickBar" class="px-5 py-2 bg-[#1e1f20] border-b border-[#282a2c] flex flex-wrap items-center gap-1.5 text-[11px]"></div>
+
+      <!-- Filter Box -->
+      <div class="px-5 pt-2.5 pb-1">
+        <input id="fpFilterInput" type="text" oninput="filterFolderList(this.value)" placeholder="🔍 กรองชื่อโฟลเดอร์ในหน้านี้..." class="w-full bg-[#131314] border border-[#3c4043] focus:border-[#8ab4f8] rounded-xl px-3 py-1.5 text-xs text-white placeholder-[#9aa0a6] focus:outline-none" />
+      </div>
+
+      <!-- Directory List -->
+      <div id="fpListContainer" class="flex-1 overflow-y-auto px-5 py-2 space-y-1 min-h-[240px]"></div>
+
+      <!-- Footer -->
+      <div class="px-5 py-3 bg-[#282a2c] border-t border-[#3c4043] flex items-center justify-between gap-2">
+        <span id="fpStatusHint" class="text-[11px] font-mono text-[#9aa0a6] truncate max-w-[60%]"></span>
+        <div class="flex items-center gap-2 shrink-0">
+          <button type="button" onclick="closeFolderPickerModal()" class="px-4 py-1.5 rounded-xl bg-[#1e1f20] hover:bg-[#37393b] border border-[#3c4043] text-xs font-semibold text-[#c4c7c5] transition" id="fpCancelBtn">ยกเลิก</button>
+          <button type="button" onclick="confirmSelectedFolder()" class="px-4 py-1.5 rounded-xl bg-[#8ab4f8] hover:bg-[#aecbfa] text-[#001d35] text-xs font-bold shadow-md transition" id="fpSelectBtn">✅ เลือกโฟลเดอร์นี้</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ตัวช่วยเวลาของข้อความ: เก็บเป็น "YYYY-MM-DD HH:MM:SS" (เวลาท้องถิ่น) ตรงกับ conversations.jsonl
+  window.nowTs = function () {
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  };
+  window.fmtTs = function (ts) {
+    if (!ts) return '';
+    return `<span class="text-[11px] font-mono text-[#c4c7c5] bg-[#282a2c] border border-[#3c4043] px-2 py-0.5 rounded-full" title="วัน-เวลาที่ส่ง/ตอบ">🕒 ${ts}</span>`;
+  };
+</script>
+</head>
+<body class="bg-[#131314] text-[#e3e3e3] h-screen flex overflow-hidden">
+
+  <!-- Left Sidebar -->
+  <aside id="sidebar" class="w-64 bg-[#1e1f20] border-r border-[#282a2c] flex flex-col shrink-0 transition-all duration-200">
+    <div class="p-3.5 border-b border-[#282a2c] space-y-2.5">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white text-xs shadow-sm">V</div>
+          <span class="text-xs font-bold text-[#ffffff] tracking-wide">Vertex Studio</span>
+        </div>
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#282a2c] text-[#8ab4f8] border border-[#3c4043]">OSS</span>
+      </div>
+      <button id="btnNewChat" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-[#282a2c] hover:bg-[#37393b] text-[#ffffff] border border-[#3c4043] text-xs font-semibold transition shadow-sm">
+        <span data-i18n="newChatBtn">+ สร้างการสนทนาใหม่</span>
+      </button>
+    </div>
+
+    <div class="px-3 pt-3 pb-1 text-[11px] font-semibold text-[#9aa0a6] uppercase tracking-wider flex items-center justify-between">
+      <span data-i18n="sessionHistoryHeader">รายการการสนทนา</span>
+      <span id="sessionCount" class="text-[#8e918f] font-mono text-[10px]">0</span>
+    </div>
+
+    <div id="sessionList" class="flex-1 overflow-y-auto px-2 py-1 space-y-1 text-xs"></div>
+
+    <div class="p-3 border-t border-[#282a2c] bg-[#1e1f20] text-[11px] text-[#9aa0a6] flex items-center justify-between">
+      <span id="syncStatusText" data-i18n="syncStatusSaved" title="ซิงก์ประวัติแชทไว้บนเครื่อง Server เพื่อไม่ให้เกิน 5MB">💾 ซิงก์ไฟล์บนเครื่องแล้ว</span>
+      <button id="btnClearAllSessions" data-i18n="clearAllBtn" class="text-rose-400 hover:text-rose-300 text-[10px]">ล้างทั้งหมด</button>
+    </div>
+  </aside>
+
+  <!-- Right Main Area -->
+  <div class="flex-1 flex flex-col min-w-0 h-full bg-[#131314]">
+
+    <!-- Top Header -->
+    <header class="border-b border-[#282a2c] bg-[#131314] px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <div class="flex flex-wrap items-center gap-2.5">
+        <button id="toggleSidebarBtn" data-i18n-title="toggleSidebarTitle" class="p-1.5 rounded-lg bg-[#282a2c] hover:bg-[#37393b] border border-[#3c4043] text-[#e3e3e3] transition" title="ซ่อน/แสดงแถบข้าง">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+        <div>
+          <h1 class="text-sm font-bold text-white flex items-center gap-2">
+            Vertex AI Cloud Studio
+            <span class="text-[11px] font-mono bg-[#282a2c] text-[#8ab4f8] border border-[#3c4043] px-2.5 py-0.5 rounded-full">your-gcp-project-id</span>
+          </h1>
+          <a href="https://console.cloud.google.com/billing" target="_blank" data-i18n="billingLink" class="text-[11px] text-[#8ab4f8] hover:text-[#aecbfa] underline flex items-center gap-1">
+            📊 ดูรายงานเครดิต &amp; ยอดเงินคงเหลือสดบน Google Cloud Console ↗
+          </a>
+        </div>
+        <a id="bridgeStatusBadge" href="http://localhost:8765" target="_blank" class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#282a2c] border border-[#3c4043] text-[11px] font-mono text-[#e3e3e3] hover:border-[#8ab4f8] transition" data-i18n-title="bridgeBadgeTitle" title="คลิกเพื่อเปิดหน้าควบคุม Gemini Web Bridge (พอร์ต 8765)">
+          <span id="bridgeStatusDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+          <span id="bridgeStatusText">Bridge: เช็คสถานะ...</span>
+        </a>
+        <div id="sessionCostMeter" class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#282a2c] border border-[#3c4043] text-[11px] font-mono text-amber-300" data-i18n-title="sessionCostMeterTitle" title="ประมาณการค่าใช้จ่ายของห้องสนทนานี้">
+          🪙 ห้องนี้ใช้ไป: ฿0.0000 (0 tokens)
+        </div>
+        <div id="contextMeterWrap" class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#282a2c] border border-[#3c4043] text-[11px] font-mono text-[#e3e3e3]" data-i18n-title="contextMeterTitle" title="ปริมาณประวัติที่ส่งเข้า Context Window">
+          <span id="contextMeter">📊 Context: 0%</span>
+          <button id="compactBtn" type="button" onclick="compactActiveSession()" data-i18n="compactBtn" data-i18n-title="compactBtnTitle" class="px-2 py-0.5 rounded-lg bg-[#37393b] hover:bg-[#474a4d] border border-[#3c4043] text-[#e3e3e3] text-[10px] font-sans font-semibold transition" title="ย่อความจำแชทเก่าให้สั้นลงเพื่อประหยัด Token">🧹 ย่อความจำ</button>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 text-xs text-[#c4c7c5]">
+        <!-- Workspace Picker -->
+        <span class="hidden sm:inline" data-i18n="workspaceLabel">📁 โฟลเดอร์งาน:</span>
+        <div class="flex items-center gap-1.5 bg-[#1e1f20] border border-[#3c4043] rounded-xl px-2.5 py-1">
+          <input id="workspaceInput" type="text" value="." placeholder="ระบุ Path โปรเจกต์..." data-i18n-placeholder="workspacePlaceholder" class="bg-transparent font-mono text-[#8ab4f8] text-xs w-36 sm:w-52 focus:outline-none" />
+          <button id="browseFolderBtn" type="button" onclick="chooseWorkspaceFolder()" data-i18n-title="browseFolderTitle" class="px-2 py-0.5 rounded-lg bg-[#282a2c] hover:bg-[#37393b] text-[#8ab4f8] hover:text-[#aecbfa] border border-[#3c4043] font-semibold transition flex items-center gap-1" title="เปิดหน้าต่างเลือกโฟลเดอร์จากเครื่อง">📂 <span data-i18n="browseFolderText">เลือก</span></button>
+          <button id="changeWorkspaceBtn" type="button" data-i18n="changeBtn" class="px-2.5 py-0.5 rounded-lg bg-[#282a2c] hover:bg-[#37393b] text-[#ffffff] border border-[#3c4043] font-semibold transition">เปลี่ยน</button>
+        </div>
+        <div class="hidden xl:flex items-center gap-1">
+          <button type="button" onclick="applyWorkspacePreset('.')" class="px-2.5 py-1 rounded-lg bg-[#282a2c] hover:bg-[#37393b] text-[11px] text-[#e3e3e3] border border-[#3c4043] transition" data-i18n-title="rootBtnTitle" title="สลับไปโปรเจกต์หลัก">Root</button>
+        </div>
+        <span id="workspaceStatus" class="text-[11px] text-emerald-400 hidden"></span>
+        <button id="openSettingsModalBtn" type="button" onclick="openConnectionWizard()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#282a2c] hover:bg-[#37393b] text-[#ffffff] border border-[#8ab4f8]/50 text-xs font-bold transition shadow-sm" data-i18n-title="connSettingsTitle" title="ตั้งค่าโหมดการเชื่อมต่อ (Gemini Web ฟรี / AI Studio API Key / Google Cloud)">
+          <span data-i18n="connSettingsBtn">⚙️ ตั้งค่าการเชื่อมต่อ</span>
+          <span id="activeConnModeBadge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Web ฟรี</span>
+        </button>
+
+        <!-- Language Switcher (TH / EN) -->
+        <div class="flex items-center bg-[#282a2c] border border-[#3c4043] rounded-xl p-0.5 text-xs font-bold shadow-sm" data-i18n-title="langSwitcherTitle" title="เลือกภาษา / Select Language">
+          <button id="langBtn_th" type="button" onclick="setLanguage('th')" class="px-2.5 py-1 rounded-lg bg-[#37393b] text-white transition text-xs font-bold flex items-center gap-1 shadow-sm">
+            <span>🇹🇭</span> <span>ไทย</span>
+          </button>
+          <button id="langBtn_en" type="button" onclick="setLanguage('en')" class="px-2.5 py-1 rounded-lg text-[#9aa0a6] hover:text-white transition text-xs font-normal flex items-center gap-1">
+            <span>🇬🇧</span> <span>EN</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Chat Workspace -->
+    <main class="flex-1 w-full p-4 sm:p-5 flex flex-col gap-2.5 min-h-0 bg-[#131314]">
+
+      <!-- Mode, File & Image Selector Strip -->
+      <div class="px-3.5 py-2 rounded-2xl bg-[#1e1f20] border border-[#282a2c] flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 shadow-sm">
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Agent Mode Switcher -->
+          <div id="agentModeContainer" class="flex items-center gap-1.5 bg-[#282a2c] border border-[#3c4043] rounded-xl px-2.5 py-1 transition" data-i18n-title="agentModeTitle" title="ควบคุมสิทธิ์การอ่านและแก้ไขไฟล์ของ AI">
+            <span class="text-[#9aa0a6] text-[11px]" data-i18n="agentModeLabel">โหมด Agent:</span>
+            <select id="agentModeSelect" class="bg-transparent text-xs font-bold text-[#8ab4f8] focus:outline-none cursor-pointer">
+              <option value="readonly" data-i18n="agentModeReadOnly" class="bg-[#1e1f20] text-amber-300">🔒 Read-Only (อ่านอย่างเดียว)</option>
+              <option value="diff" data-i18n="agentModeDiff" class="bg-[#1e1f20] text-[#8ab4f8]" selected>🛠️ สถาปนิก + เสนอ Diff</option>
+              <option value="auto" data-i18n="agentModeAuto" class="bg-[#1e1f20] text-emerald-300">⚡ Auto-Edit (แก้ไฟล์อัตโนมัติ)</option>
+            </select>
+          </div>
+
+          <span class="text-[#3c4043] hidden sm:inline">|</span>
+          <span class="text-[#9aa0a6]" data-i18n="attachFilesLabel">แนบไฟล์/รูป:</span>
+          <select id="fileSelector" class="bg-[#282a2c] border border-[#3c4043] rounded-xl px-2.5 py-1 text-[#e3e3e3] text-xs focus:outline-none focus:border-[#8ab4f8] max-w-[14rem]">
+            <option value="" data-i18n="selectFileDefault">-- เลือกไฟล์ (หรือพิมพ์ @ ในแชท) --</option>
+          </select>
+          <button id="addFileBtn" type="button" data-i18n="addFileBtn" class="px-2.5 py-1 rounded-xl bg-[#282a2c] text-[#e3e3e3] border border-[#3c4043] hover:bg-[#37393b] font-semibold transition">+ แนบ</button>
+          <button id="addImageBtn" type="button" data-i18n="addImageBtn" data-i18n-title="addImageBtnTitle" class="px-2.5 py-1 rounded-xl bg-[#282a2c] text-[#c4c7c5] border border-[#3c4043] hover:bg-[#37393b] hover:text-white font-semibold transition" title="เลือกรูป หรือกด Ctrl+V วางรูปแคปหน้าจอได้ทันที">🖼️ แนบรูป / Ctrl+V</button>
+          <input type="file" id="imageInput" accept="image/*" multiple class="hidden" />
+        </div>
+        <div id="attachedTags" class="flex flex-wrap gap-1.5"></div>
+      </div>
+
+      <!-- Chat Conversation Output -->
+      <div id="outputBox" class="flex-1 w-full bg-[#131314] rounded-2xl border border-[#282a2c] p-4 sm:p-6 overflow-y-auto space-y-4 text-sm sm:text-base leading-relaxed">
+      </div>
+
+      <!-- Bottom Input Box & Model Selector -->
+      <div class="relative rounded-3xl bg-[#1e1f20] border border-[#3c4043] p-3.5 flex flex-col gap-2 shrink-0 shadow-lg focus-within:border-[#8ab4f8] transition">
+
+        <!-- @mention File Autocomplete Popover -->
+        <div id="atMentionMenu" class="hidden absolute left-3 bottom-full mb-2 w-96 max-w-[90vw] max-h-64 overflow-y-auto rounded-xl bg-[#181a24] border border-cyan-500/50 shadow-2xl z-50 p-1.5 text-xs space-y-0.5"></div>
+
+        <!-- Text Area -->
+        <textarea id="promptInput" rows="2" placeholder="พิมพ์สั่งงาน (พิมพ์ @ เพื่อค้นหาไฟล์แนบอัตโนมัติ) เช่น 'ช่วยตรวจ @server.py' หรือ 'ดู git diff ล่าสุด'..." data-i18n-placeholder="promptPlaceholder" class="w-full bg-transparent text-sm sm:text-base text-slate-100 placeholder-slate-500 focus:outline-none resize-none leading-relaxed"></textarea>
+
+        <!-- Bottom Controls Bar -->
+        <div class="flex items-center justify-between pt-1 border-t border-slate-800/60">
+
+          <!-- Model Selector Trigger at Bottom-Left -->
+          <div class="relative flex items-center gap-1.5">
+            <button id="modelBtn" type="button" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-cyan-500/50 text-xs font-semibold text-slate-200 transition shadow-sm">
+              <span id="cloudProviderDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span id="currentModelDisplay">Gemini 3.8 Flash · Medium</span>
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+
+            <!-- Quota Status Badge Button -->
+            <button id="modelQuotaBadge" type="button" onclick="probeCurrentModelQuota()" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border transition shadow-sm select-none cursor-pointer border-emerald-500/40 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/50" title="สถานะโควต้าคลาวด์ (คลิกเพื่อทดสอบยิงเช็คสด)">
+              <span id="modelQuotaDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span id="modelQuotaText">พร้อมใช้</span>
+            </button>
+
+            <!-- Popup Menu Opened Upwards -->
+            <div id="modelDropdown" class="hidden absolute left-0 bottom-full mb-2.5 w-72 rounded-2xl model-menu shadow-2xl z-50 p-2 text-xs border border-slate-700/80">
+              <div class="px-3 py-1.5 text-[11px] font-semibold text-slate-400 border-b border-slate-700/50 mb-1 flex items-center justify-between">
+                <span>Model (เลือกตัวจริงจาก Cloud)</span>
+              </div>
+
+              <!-- Carbon -->
+              <div class="model-row relative rounded-lg" data-model="gemini-4-carbon">
+                <div class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#2b2f42] cursor-pointer transition select-none" onclick="toggleModelSub('gemini-4-carbon', event)">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-slate-100">Gemini 4 Carbon</span>
+                    <span class="text-[9px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-mono">New</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 text-slate-400">
+                    <span class="text-[11px] level-badge font-mono">High</span>
+                    <span class="check-icon hidden text-cyan-400 font-bold">✓</span>
+                    <span class="text-slate-500">›</span>
+                  </div>
+                </div>
+                <div class="submenu-wrapper">
+                  <div class="w-52 rounded-xl model-sub shadow-2xl p-1.5 text-xs border border-slate-700/80 space-y-1">
+                    <div class="px-2.5 py-1 text-[10px] font-semibold text-slate-400 border-b border-slate-700/50 uppercase tracking-wider">Thinking Level</div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-4-carbon', 'LOW', 'Gemini 4 Carbon · Low')">
+                      <div>
+                        <div class="font-semibold text-slate-200">Low</div>
+                        <div class="text-[10px] text-slate-400">เร็วพิเศษ &amp; ประหยัดเครดิต</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-4-carbon', 'MEDIUM', 'Gemini 4 Carbon · Medium')">
+                      <div>
+                        <div class="font-semibold text-slate-200">Medium</div>
+                        <div class="text-[10px] text-slate-400">สมดุลความเร็ว &amp; คุณภาพ</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-4-carbon', 'HIGH', 'Gemini 4 Carbon · High')">
+                      <div>
+                        <div class="font-semibold text-slate-200">High</div>
+                        <div class="text-[10px] text-slate-400">คิดลึก &amp; วิเคราะห์โค้ด</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Hydrogen -->
+              <div class="model-row relative rounded-lg" data-model="gemini-4-hydrogen">
+                <div class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#2b2f42] cursor-pointer transition select-none" onclick="toggleModelSub('gemini-4-hydrogen', event)">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-slate-100">Gemini 4 Hydrogen</span>
+                    <span class="text-[9px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-mono">New</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 text-slate-400">
+                    <span class="text-[11px] level-badge font-mono">Medium</span>
+                    <span class="check-icon hidden text-cyan-400 font-bold">✓</span>
+                    <span class="text-slate-500">›</span>
+                  </div>
+                </div>
+                <div class="submenu-wrapper">
+                  <div class="w-52 rounded-xl model-sub shadow-2xl p-1.5 text-xs border border-slate-700/80 space-y-1">
+                    <div class="px-2.5 py-1 text-[10px] font-semibold text-slate-400 border-b border-slate-700/50 uppercase tracking-wider">Thinking Level</div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-4-hydrogen', 'LOW', 'Gemini 4 Hydrogen · Low')">
+                      <div>
+                        <div class="font-semibold text-slate-200">Low</div>
+                        <div class="text-[10px] text-slate-400">เร็วพิเศษ &amp; ประหยัดเครดิต</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-4-hydrogen', 'MEDIUM', 'Gemini 4 Hydrogen · Medium')">
+                      <div>
+                        <div class="font-semibold text-slate-200">Medium</div>
+                        <div class="text-[10px] text-slate-400">สมดุลความเร็ว &amp; คุณภาพ</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-4-hydrogen', 'HIGH', 'Gemini 4 Hydrogen · High')">
+                      <div>
+                        <div class="font-semibold text-slate-200">High</div>
+                        <div class="text-[10px] text-slate-400">คิดลึก &amp; วิเคราะห์โค้ด</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Argon -->
+              <div class="model-row relative rounded-lg" data-model="gemini-4-argon">
+                <div class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#2b2f42] cursor-pointer transition select-none" onclick="toggleModelSub('gemini-4-argon', event)">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-slate-100">Gemini 4 Argon</span>
+                    <span class="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-mono">New</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 text-slate-400">
+                    <span class="text-[11px] level-badge font-mono">Medium</span>
+                    <span class="check-icon hidden text-cyan-400 font-bold">✓</span>
+                    <span class="text-slate-500">›</span>
+                  </div>
+                </div>
+                <div class="submenu-wrapper">
+                  <div class="w-52 rounded-xl model-sub shadow-2xl p-1.5 text-xs border border-slate-700/80 space-y-1">
+                    <div class="px-2.5 py-1 text-[10px] font-semibold text-slate-400 border-b border-slate-700/50 uppercase tracking-wider">Thinking Level</div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-4-argon', 'LOW', 'Gemini 4 Argon · Low')">
+                      <div>
+                        <div class="font-semibold text-slate-200">Low</div>
+                        <div class="text-[10px] text-slate-400">เร็วพิเศษ &amp; ประหยัดเครดิต</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-4-argon', 'MEDIUM', 'Gemini 4 Argon · Medium')">
+                      <div>
+                        <div class="font-semibold text-slate-200">Medium</div>
+                        <div class="text-[10px] text-slate-400">สมดุลความเร็ว &amp; คุณภาพ</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-4-argon', 'HIGH', 'Gemini 4 Argon · High')">
+                      <div>
+                        <div class="font-semibold text-slate-200">High</div>
+                        <div class="text-[10px] text-slate-400">คิดลึก &amp; วิเคราะห์โค้ด</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3.8 Flash -->
+              <div class="model-row relative rounded-lg" data-model="gemini-3.8-flash">
+                <div class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#2b2f42] cursor-pointer transition select-none" onclick="toggleModelSub('gemini-3.8-flash', event)">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-slate-100">Gemini 3.8 Flash</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 text-slate-400">
+                    <span class="text-[11px] level-badge font-mono">Medium</span>
+                    <span class="check-icon hidden text-cyan-400 font-bold">✓</span>
+                    <span class="text-slate-500">›</span>
+                  </div>
+                </div>
+                <div class="submenu-wrapper">
+                  <div class="w-52 rounded-xl model-sub shadow-2xl p-1.5 text-xs border border-slate-700/80 space-y-1">
+                    <div class="px-2.5 py-1 text-[10px] font-semibold text-slate-400 border-b border-slate-700/50 uppercase tracking-wider">Thinking Level</div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-3.8-flash', 'LOW', 'Gemini 3.8 Flash · Low')">
+                      <div>
+                        <div class="font-semibold text-slate-200">Low</div>
+                        <div class="text-[10px] text-slate-400">เร็วพิเศษ &amp; ประหยัดเครดิต</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-3.8-flash', 'MEDIUM', 'Gemini 3.8 Flash · Medium')">
+                      <div>
+                        <div class="font-semibold text-slate-200">Medium</div>
+                        <div class="text-[10px] text-slate-400">สมดุลความเร็ว &amp; คุณภาพ</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                    <div class="sub-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" onclick="selectModel('gemini-3.8-flash', 'HIGH', 'Gemini 3.8 Flash · High')">
+                      <div>
+                        <div class="font-semibold text-slate-200">High</div>
+                        <div class="text-[10px] text-slate-400">คิดลึก &amp; วิเคราะห์โค้ด</div>
+                      </div>
+                      <span class="sub-check hidden text-cyan-300 font-bold">✓</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Footer: Usage Link -->
+              <div class="border-t border-slate-700/50 mt-1.5 pt-1.5 px-2 flex items-center justify-between text-[11px] text-slate-400">
+                <a href="https://console.cloud.google.com/billing" target="_blank" class="hover:text-cyan-300 flex items-center gap-1.5 transition">
+                  <span>📊 View Usage (ดูยอดเครดิตคลาวด์สด) ↗</span>
+                </a>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Center Gemini Web Model Selector -->
+          <div class="relative">
+            <button id="webModelBtn" type="button" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/90 text-xs font-semibold text-slate-300 transition shadow-sm" title="คลิกเพื่อเลือกโมเดลฝั่ง Gemini Web (Web Control)">
+              <span id="webProviderDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+              <span id="currentWebModelDisplay">🌐 Web: Web Control</span>
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+
+            <!-- Popup Menu Opened Upwards -->
+            <div id="webModelDropdown" class="hidden absolute left-1/2 -translate-x-1/2 bottom-full mb-2.5 w-72 rounded-2xl model-menu shadow-2xl z-50 p-2 text-xs border border-pink-500/40">
+              <div class="px-3 py-1.5 text-[11px] font-semibold text-pink-300 border-b border-slate-700/50 mb-1 flex items-center justify-between">
+                <span>🌐 Gemini Web (Web Control)</span>
+                <span class="text-[10px] font-mono text-emerald-400">Free Web</span>
+              </div>
+
+              <!-- Web Control (แท็บห้องปัจจุบัน) -->
+              <div class="web-model-item px-3 py-2 rounded-lg hover:bg-[#2b2f42] cursor-pointer flex items-center justify-between transition border-b border-slate-700/50 mb-1 bg-pink-950/20" data-web-model="current" onclick="selectWebModel('current', 'Web Control')">
+                <div class="flex items-center gap-2">
+                  <span class="text-pink-400">⚡</span>
+                  <div>
+                    <div class="text-[11px] text-pink-300">แท็บปัจจุบันใน Chrome</div>
+                    <div class="font-semibold text-white">Web Control</div>
+                  </div>
+                </div>
+                <span class="web-check text-pink-400 font-bold">✓</span>
+              </div>
+
+              <!-- 3.5 Flash-Lite -->
+              <div class="web-model-item px-3 py-2 rounded-lg hover:bg-[#2b2f42] cursor-pointer flex items-center justify-between transition" data-web-model="3.5-flash-lite" onclick="selectWebModel('3.5-flash-lite', '3.5 Flash-Lite')">
+                <div>
+                  <div class="text-[11px] text-slate-400">คำตอบด่วน</div>
+                  <div class="font-semibold text-slate-100">3.5 Flash-Lite</div>
+                </div>
+                <span class="web-check hidden text-pink-400 font-bold">✓</span>
+              </div>
+
+              <!-- 4 Hydrogen -->
+              <div class="web-model-item px-3 py-2 rounded-lg hover:bg-[#2b2f42] cursor-pointer flex items-center justify-between transition" data-web-model="4-hydrogen" onclick="selectWebModel('4-hydrogen', '4 Hydrogen')">
+                <div>
+                  <div class="text-[11px] text-slate-400">ความช่วยเหลือในเรื่องทั่วๆ ไป</div>
+                  <div class="font-semibold text-slate-100">4 Hydrogen</div>
+                </div>
+                <span class="web-check hidden text-pink-400 font-bold">✓</span>
+              </div>
+
+              <!-- 3.1 Pro -->
+              <div class="web-model-item px-3 py-2 rounded-lg hover:bg-[#2b2f42] cursor-pointer flex items-center justify-between transition" data-web-model="3.1-pro" onclick="selectWebModel('3.1-pro', '3.1 Pro')">
+                <div>
+                  <div class="text-[11px] text-slate-400">การค้นคว้าข้อมูลโดยละเอียด</div>
+                  <div class="font-semibold text-slate-100">3.1 Pro</div>
+                </div>
+                <span class="web-check hidden text-pink-400 font-bold">✓</span>
+              </div>
+
+              <!-- 4 Argon -->
+              <div class="web-model-item px-3 py-2 rounded-lg hover:bg-[#2b2f42] cursor-pointer flex items-center justify-between transition" data-web-model="4-argon" onclick="selectWebModel('4-argon', '4 Argon')">
+                <div>
+                  <div class="text-[11px] text-slate-400">โค้ดและการวิเคราะห์</div>
+                  <div class="font-semibold text-slate-100">4 Argon</div>
+                </div>
+                <span class="web-check hidden text-pink-400 font-bold">✓</span>
+              </div>
+
+              <!-- 4 Carbon (Locked) -->
+              <div class="web-model-item px-3 py-2 rounded-lg hover:bg-[#2b2f42] cursor-pointer flex items-center justify-between transition opacity-80" data-web-model="4-carbon" onclick="selectWebModel('4-carbon', '4 Carbon')">
+                <div class="flex items-center gap-2">
+                  <span class="text-slate-400">🔒</span>
+                  <div>
+                    <div class="text-[11px] text-slate-400">งานที่ซับซ้อนที่สุด</div>
+                    <div class="font-semibold text-slate-300">4 Carbon</div>
+                  </div>
+                </div>
+                <span class="web-check hidden text-pink-400 font-bold">✓</span>
+              </div>
+
+              <!-- Thinking Level Submenu -->
+              <div class="border-t border-slate-700/50 mt-1.5 pt-1.5">
+                <div class="web-thinking-row relative rounded-lg">
+                  <div class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#2b2f42] cursor-pointer transition select-none" onclick="toggleWebThinkingSub(event)">
+                    <span class="font-semibold text-slate-200">ระดับการคิด</span>
+                    <div class="flex items-center gap-1.5">
+                      <span id="webThinkingBadge" class="text-[11px] font-mono text-pink-300 font-bold">สูง</span>
+                      <span class="text-slate-400">›</span>
+                    </div>
+                  </div>
+                  <div class="submenu-wrapper">
+                    <div class="w-56 rounded-xl model-sub shadow-2xl p-1.5 text-xs border border-slate-700/80 space-y-1">
+                      <div class="px-2.5 py-1 text-[10px] font-semibold text-slate-400 border-b border-slate-700/50 uppercase tracking-wider">ระดับการคิด (Thinking)</div>
+                      <div class="web-think-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" data-web-level="LOW" onclick="selectWebThinking('LOW', 'ต่ำ', event)">
+                        <div>
+                          <div class="font-semibold text-slate-200">ต่ำ</div>
+                          <div class="text-[10px] text-slate-400">Fast and efficient</div>
+                        </div>
+                        <span class="web-think-check hidden text-pink-300 font-bold">✓</span>
+                      </div>
+                      <div class="web-think-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" data-web-level="MEDIUM" onclick="selectWebThinking('MEDIUM', 'ปานกลาง', event)">
+                        <div>
+                          <div class="font-semibold text-slate-200">ปานกลาง</div>
+                          <div class="text-[10px] text-slate-400">ความลึกในระดับที่สมดุล</div>
+                        </div>
+                        <span class="web-think-check hidden text-pink-300 font-bold">✓</span>
+                      </div>
+                      <div class="web-think-item px-2.5 py-2 rounded-lg hover:bg-slate-700/80 cursor-pointer flex items-center justify-between transition" data-web-level="HIGH" onclick="selectWebThinking('HIGH', 'สูง', event)">
+                        <div>
+                          <div class="font-semibold text-slate-200">สูง</div>
+                          <div class="text-[10px] text-slate-400">ละเอียดเป็นพิเศษ</div>
+                        </div>
+                        <span class="web-think-check hidden text-pink-300 font-bold">✓</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons at Bottom-Right -->
+          <div class="flex items-center gap-2">
+            <!-- Token Gauge Badge -->
+            <div id="tokenGaugeBadge" class="hidden items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border transition shadow-sm select-none cursor-pointer" onclick="handleTokenGaugeClick()" title="คลิกเพื่อสลับไปโหมด Web หรือดูคำแนะนำ">
+              <span id="tokenGaugeDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span id="tokenGaugeText" class="text-slate-300">~0 tokens</span>
+            </div>
+
+            <button id="undoLastTurnBtn" type="button" onclick="undoLastTurn()" data-i18n-title="undoLastTurnTitle" class="px-3 py-1.5 rounded-xl bg-[#282a2c] hover:bg-[#37393b] text-[#c4c7c5] hover:text-white border border-[#3c4043] font-semibold text-xs sm:text-sm transition flex items-center gap-1.5" title="ย้อนข้อความล่าสุด (ลบคำสั่งและคำตอบ/Error ล่าสุดออกจากแดชบอร์ดและ conversations.jsonl แล้วนำคำสั่งเดิมกลับมาแก้ไข)">
+              <span data-i18n="rewindLastTurnBtn">⏪ ย้อนข้อความ</span>
+            </button>
+            <button id="handoffLatestBtn" type="button" onclick="handoffLatestAnswer(this)" data-i18n-title="handoffLatestTitle" class="px-3 py-1.5 rounded-xl bg-[#282a2c] hover:bg-[#37393b] text-[#8ab4f8] hover:text-white border border-[#3c4043] font-semibold text-xs sm:text-sm transition flex items-center gap-1.5" title="ส่งต่อคำตอบและโค้ดล่าสุดลง handoff_latest.md ให้ Antigravity ทันที">
+              <span data-i18n="handoffLatestBtn">🤖 ส่งต่อให้ Antigravity</span>
+            </button>
+            <button id="stopBtn" type="button" class="hidden px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center gap-1.5">
+              <span data-i18n="stopBtn">⏹️ หยุด (Stop)</span>
+            </button>
+            <button id="sendBtn" class="px-4 py-1.5 rounded-xl bg-[#8ab4f8] hover:bg-[#aecbfa] text-[#001d35] font-bold text-xs sm:text-sm shadow-md transition flex items-center gap-1.5">
+              <span data-i18n="sendBtn">ส่งงาน</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Setup Wizard / Connection Settings Modal -->
+  <div id="connectionWizardModal" class="hidden fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="w-full max-w-2xl rounded-3xl bg-[#1e1f20] border border-[#3c4043] shadow-2xl overflow-hidden text-[#e3e3e3] my-auto">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 bg-[#282a2c] border-b border-[#3c4043] flex items-center justify-between">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <span data-i18n="wizardTitle">⚙️ ตั้งค่าการเชื่อมต่อ (Setup Wizard)</span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Open Source Edition</span>
+          </h2>
+          <p class="text-xs text-[#9aa0a6] mt-0.5" data-i18n="wizardSubtitle">เลือกวิธีเชื่อมต่อ AI ได้ตามต้องการ — ใช้งานฟรี 100% โดยไม่ต้องใช้บัตรเครดิต</p>
+        </div>
+        <button type="button" onclick="closeConnectionWizard()" class="p-2 rounded-xl bg-[#1e1f20] hover:bg-[#37393b] text-[#c4c7c5] hover:text-white border border-[#3c4043] transition" data-i18n-title="wizardCloseTitle" title="ปิดหน้าต่าง">✕</button>
+      </div>
+
+      <!-- Modal Body: Triple-Mode Selection -->
+      <div class="p-6 space-y-3.5 max-h-[75vh] overflow-y-auto">
+
+        <!-- Option A: Gemini Web (100% Free, No API Key) -->
+        <div id="modeCard_web" onclick="selectWizardMode('web')" class="p-4 rounded-2xl bg-[#131314] border-2 border-[#3c4043] hover:border-pink-400/70 cursor-pointer transition space-y-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <input type="radio" name="connModeRadio" id="radioMode_web" value="web" class="accent-pink-400 w-4 h-4 cursor-pointer" />
+              <div>
+                <div class="font-bold text-sm text-white flex flex-wrap items-center gap-2">
+                  <span data-i18n="wizardWebTitle">🌐 Gemini Web (ฟรี 100% ไม่ต้องใช้ Key)</span>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/40" data-i18n="wizardWebBadge">แนะนำ • ไม่จำกัดโควต้า</span>
+                </div>
+                <p class="text-xs text-[#9aa0a6] mt-0.5" data-i18n="wizardWebDesc">เชื่อมต่อกับแท็บ gemini.google.com บน Google Chrome ผ่าน Local CDP Bridge (พอร์ต 8765)</p>
+              </div>
+            </div>
+          </div>
+          <div id="modePanel_web" class="pl-6 pt-2 border-t border-[#282a2c] space-y-2.5 text-xs">
+            <div class="p-3 rounded-xl bg-[#1e1f20] border border-[#3c4043] text-[#c4c7c5] space-y-1">
+              <div class="font-semibold text-white" data-i18n="wizardWebStepHeader">📋 วิธีเปิดใช้งาน Chrome CDP:</div>
+              <div data-i18n-html="wizardWebStep1">1. เปิด Google Chrome ด้วยพารามิเตอร์ <code class="text-[#8ab4f8]">--remote-debugging-port=9222</code> หรือเปิด Remote Debugging ในหน้า <code class="text-[#8ab4f8]">chrome://inspect/#remote-debugging</code></div>
+              <div data-i18n-html="wizardWebStep2">2. เปิดแท็บ <a href="https://gemini.google.com/app" target="_blank" class="text-[#8ab4f8] underline">gemini.google.com/app</a> และล็อกอินบัญชี Google ของคุณ</div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" onclick="connectBrowserTabFromWizard(event)" class="px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs shadow-md transition flex items-center gap-1.5">
+                <span data-i18n="wizardWebConnectBtn">🔗 เชื่อมต่อแท็บเบราว์เซอร์</span>
+              </button>
+              <span id="wizardWebStatus" class="text-xs font-mono text-[#9aa0a6]"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option B: Google AI Studio API Key (Free 1,500 req/day) -->
+        <div id="modeCard_aistudio" onclick="selectWizardMode('aistudio')" class="p-4 rounded-2xl bg-[#131314] border-2 border-[#3c4043] hover:border-emerald-400/70 cursor-pointer transition space-y-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <input type="radio" name="connModeRadio" id="radioMode_aistudio" value="aistudio" class="accent-emerald-400 w-4 h-4 cursor-pointer" />
+              <div>
+                <div class="font-bold text-sm text-white flex flex-wrap items-center gap-2">
+                  <span data-i18n="wizardStudioTitle">🔑 Google AI Studio API Key (ฟรีวันละ 1,500 ครั้ง)</span>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" data-i18n="wizardStudioBadge">ไม่ต้องผูกบัตรเครดิต</span>
+                </div>
+                <p class="text-xs text-[#9aa0a6] mt-0.5" data-i18n="wizardStudioDesc">เรียกใช้งานโมเดล Gemini 2.5 Flash / Pro ผ่าน API โดยตรงด้วยบัญชี Gmail ทั่วไป</p>
+              </div>
+            </div>
+          </div>
+          <div id="modePanel_aistudio" class="pl-6 pt-2 border-t border-[#282a2c] space-y-2.5 text-xs">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <label for="wizardApiKeyInput" class="text-[#c4c7c5] font-semibold" data-i18n="wizardStudioKeyLabel">วางรหัส Gemini API Key:</label>
+              <a href="https://aistudio.google.com/apikey" target="_blank" data-i18n="wizardStudioGetKeyLink" class="text-[#8ab4f8] hover:text-[#aecbfa] underline font-semibold">
+                ✨ กดรับ API Key ฟรีที่ aistudio.google.com ↗
+              </a>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="wizardApiKeyInput" type="password" onclick="event.stopPropagation()" placeholder="AIzaSy..." class="flex-1 bg-[#1e1f20] border border-[#3c4043] focus:border-emerald-400 rounded-xl px-3 py-2 font-mono text-xs text-white focus:outline-none" />
+              <button type="button" onclick="toggleWizardKeyVisibility(event)" class="px-2.5 py-2 rounded-xl bg-[#282a2c] hover:bg-[#37393b] border border-[#3c4043] text-xs text-[#c4c7c5]" title="แสดง/ซ่อนคีย์">👁️</button>
+              <button type="button" onclick="testWizardConnection(event, 'aistudio')" data-i18n="wizardStudioTestBtn" class="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-xs transition">ทดสอบ Key</button>
+            </div>
+            <div id="wizardApiKeyHint" class="text-[11px] font-mono text-[#9aa0a6]"></div>
+          </div>
+        </div>
+
+        <!-- Option C: Google Cloud Vertex AI (Enterprise) -->
+        <div id="modeCard_vertex" onclick="selectWizardMode('vertex')" class="p-4 rounded-2xl bg-[#131314] border-2 border-[#3c4043] hover:border-[#8ab4f8]/70 cursor-pointer transition space-y-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <input type="radio" name="connModeRadio" id="radioMode_vertex" value="vertex" class="accent-blue-400 w-4 h-4 cursor-pointer" />
+              <div>
+                <div class="font-bold text-sm text-white flex flex-wrap items-center gap-2">
+                  <span data-i18n="wizardVertexTitle">🏢 Google Cloud Vertex AI</span>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40" data-i18n="wizardVertexBadge">Enterprise / GCP ADC</span>
+                </div>
+                <p class="text-xs text-[#9aa0a6] mt-0.5" data-i18n="wizardVertexDesc">สำหรับผู้ใช้ที่มีบัญชี Google Cloud Platform และตั้งค่า <code class="text-[#8ab4f8]">gcloud auth application-default login</code> แล้ว</p>
+              </div>
+            </div>
+          </div>
+          <div id="modePanel_vertex" class="pl-6 pt-2 border-t border-[#282a2c] grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+            <div>
+              <label class="block text-[#c4c7c5] mb-1" data-i18n="wizardVertexProjectLabel">GCP Project ID:</label>
+              <input id="wizardProjectIdInput" type="text" onclick="event.stopPropagation()" placeholder="your-gcp-project-id" class="w-full bg-[#1e1f20] border border-[#3c4043] focus:border-[#8ab4f8] rounded-xl px-3 py-2 font-mono text-xs text-white focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[#c4c7c5] mb-1" data-i18n="wizardVertexRegionLabel">Region:</label>
+              <input id="wizardRegionInput" type="text" onclick="event.stopPropagation()" placeholder="us-central1" class="w-full bg-[#1e1f20] border border-[#3c4043] focus:border-[#8ab4f8] rounded-xl px-3 py-2 font-mono text-xs text-white focus:outline-none" />
+            </div>
+          </div>
+        </div>
+
+        <div id="wizardStatusBanner" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3.5 bg-[#282a2c] border-t border-[#3c4043] flex items-center justify-between gap-2">
+        <span class="text-[11px] text-[#9aa0a6]" data-i18n="wizardFooterNote">💾 บันทึกลงเบราว์เซอร์และไฟล์ .env บนเครื่องอัตโนมัติ</span>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closeConnectionWizard()" data-i18n="wizardCancelBtn" class="px-4 py-2 rounded-xl bg-[#1e1f20] hover:bg-[#37393b] text-[#c4c7c5] border border-[#3c4043] text-xs font-semibold transition">ยกเลิก</button>
+          <button type="button" onclick="saveConnectionWizardSettings()" data-i18n="wizardSaveBtn" class="px-5 py-2 rounded-xl bg-[#8ab4f8] hover:bg-[#aecbfa] text-[#001d35] font-bold text-xs shadow-md transition">✅ บันทึกการตั้งค่า</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SESSIONS_KEY = 'VERTEX_AI_STUDIO_SESSIONS';
+    const WORKSPACE_KEY = 'VERTEX_AI_STUDIO_WORKSPACE';
+    const DEFAULT_WS = '.';
+    const I18N_STORAGE_KEY = 'VERTEX_OSS_LANG';
+
+    const I18N = {
+      th: {
+        appTitle: "Vertex Studio",
+        billingLink: "📊 ดูรายงานเครดิต & ยอดเงินคงเหลือสดบน Google Cloud Console ↗",
+        bridgeBadgeTitle: "คลิกเพื่อเปิดหน้าควบคุม Gemini Web Bridge (พอร์ต 8765)",
+        sessionCostMeterTitle: "ประมาณการค่าใช้จ่ายของห้องสนทนานี้",
+        contextMeterTitle: "ปริมาณประวัติที่ส่งเข้า Context Window",
+        compactBtn: "🧹 ย่อความจำ",
+        compactBtnTitle: "ย่อความจำแชทเก่าให้สั้นลงเพื่อประหยัด Token",
+        workspaceLabel: "📁 โฟลเดอร์งาน:",
+        workspacePlaceholder: "ระบุ Path โปรเจกต์...",
+        browseFolderText: "เลือก",
+        browseFolderTitle: "เปิดหน้าต่างเลือกโฟลเดอร์จากเครื่อง",
+        changeBtn: "เปลี่ยน",
+        rootBtnTitle: "สลับไปโปรเจกต์หลัก",
+        connSettingsTitle: "ตั้งค่าโหมดการเชื่อมต่อ (Gemini Web ฟรี / AI Studio API Key / Google Cloud)",
+        connSettingsBtn: "⚙️ ตั้งค่าการเชื่อมต่อ",
+        langSwitcherTitle: "เลือกภาษา / Select Language",
+        toggleSidebarTitle: "ซ่อน/แสดงแถบข้าง",
+        newChatBtn: "+ สร้างการสนทนาใหม่",
+        sessionHistoryHeader: "รายการการสนทนา",
+        syncStatusSaved: "💾 ซิงก์ไฟล์บนเครื่องแล้ว",
+        clearAllBtn: "ล้างทั้งหมด",
+        clearAllConfirm: "คุณแน่ใจหรือไม่ว่าต้องการล้างประวัติการสนทนาทั้งหมด (รวมถึง conversations.jsonl)?",
+        agentModeTitle: "ควบคุมสิทธิ์การอ่านและแก้ไขไฟล์ของ AI",
+        agentModeLabel: "โหมด Agent:",
+        agentModeReadOnly: "🔒 Read-Only (อ่านอย่างเดียว)",
+        agentModeDiff: "🛠️ สถาปนิก + เสนอ Diff",
+        agentModeAuto: "⚡ Auto-Edit (แก้ไฟล์อัตโนมัติ)",
+        attachFilesLabel: "แนบไฟล์/รูป:",
+        selectFileDefault: "-- เลือกไฟล์ (หรือพิมพ์ @ ในแชท) --",
+        addFileBtn: "+ แนบ",
+        addImageBtn: "🖼️ แนบรูป / Ctrl+V",
+        addImageBtnTitle: "เลือกรูป หรือกด Ctrl+V วางรูปแคปหน้าจอได้ทันที",
+        promptPlaceholder: "พิมพ์สั่งงาน (พิมพ์ @ เพื่อค้นหาไฟล์แนบอัตโนมัติ) เช่น 'ช่วยตรวจ @server.py' หรือ 'ดู git diff ล่าสุด'...",
+        undoLastTurnTitle: "ย้อนข้อความล่าสุด (ลบคำสั่งและคำตอบ/Error ล่าสุดออกจากแดชบอร์ดและ conversations.jsonl แล้วนำคำสั่งเดิมกลับมาแก้ไข)",
+        rewindLastTurnBtn: "⏪ ย้อนข้อความ",
+        handoffLatestTitle: "ส่งต่อคำตอบและโค้ดล่าสุดลง handoff_latest.md ให้ Antigravity ทันที",
+        handoffLatestBtn: "🤖 ส่งต่อให้ Antigravity",
+        stopBtn: "⏹️ หยุด (Stop)",
+        sendBtn: "ส่งงาน",
+        sendBtnWorking: "กำลังทำงาน... ⏳",
+        badgeWebFree: "Web ฟรี",
+        badgeAiStudio: "🔑 AI Studio",
+        badgeVertex: "🏢 Vertex AI",
+        wizardTitle: "⚙️ ตั้งค่าการเชื่อมต่อ (Setup Wizard)",
+        wizardSubtitle: "เลือกวิธีเชื่อมต่อ AI ได้ตามต้องการ — ใช้งานฟรี 100% โดยไม่ต้องใช้บัตรเครดิต",
+        wizardCloseTitle: "ปิดหน้าต่าง",
+        wizardWebTitle: "🌐 Gemini Web (ฟรี 100% ไม่ต้องใช้ Key)",
+        wizardWebBadge: "แนะนำ • ไม่จำกัดโควต้า",
+        wizardWebDesc: "เชื่อมต่อกับแท็บ gemini.google.com บน Google Chrome ผ่าน Local CDP Bridge (พอร์ต 8765)",
+        wizardWebStepHeader: "📋 วิธีเปิดใช้งาน Chrome CDP:",
+        wizardWebStep1: '1. เปิด Google Chrome ด้วยพารามิเตอร์ <code class="text-[#8ab4f8]">--remote-debugging-port=9222</code> หรือเปิด Remote Debugging ในหน้า <code class="text-[#8ab4f8]">chrome://inspect/#remote-debugging</code>',
+        wizardWebStep2: '2. เปิดแท็บ <a href="https://gemini.google.com/app" target="_blank" class="text-[#8ab4f8] underline">gemini.google.com/app</a> และล็อกอินบัญชี Google ของคุณ',
+        wizardWebConnectBtn: "🔗 เชื่อมต่อแท็บเบราว์เซอร์",
+        wizardStudioTitle: "🔑 Google AI Studio API Key (ฟรีวันละ 1,500 ครั้ง)",
+        wizardStudioBadge: "ไม่ต้องผูกบัตรเครดิต",
+        wizardStudioDesc: "เรียกใช้งานโมเดล Gemini 2.5 Flash / Pro ผ่าน API โดยตรงด้วยบัญชี Gmail ทั่วไป",
+        wizardStudioKeyLabel: "วางรหัส Gemini API Key:",
+        wizardStudioGetKeyLink: "✨ กดรับ API Key ฟรีที่ aistudio.google.com ↗",
+        wizardStudioTestBtn: "ทดสอบ Key",
+        wizardVertexTitle: "🏢 Google Cloud Vertex AI",
+        wizardVertexBadge: "Enterprise / GCP ADC",
+        wizardVertexDesc: "สำหรับผู้ใช้ที่มีบัญชี Google Cloud Platform และตั้งค่า gcloud auth application-default login แล้ว",
+        wizardVertexProjectLabel: "GCP Project ID:",
+        wizardVertexRegionLabel: "Region:",
+        wizardFooterNote: "💾 บันทึกลงเบราว์เซอร์และไฟล์ .env บนเครื่องอัตโนมัติ",
+        wizardCancelBtn: "ยกเลิก",
+        wizardSaveBtn: "✅ บันทึกการตั้งค่า"
+      },
+      en: {
+        appTitle: "Vertex Studio",
+        billingLink: "📊 Live Billing & Credit Report on Google Cloud Console ↗",
+        bridgeBadgeTitle: "Click to open Gemini Web Bridge controls (port 8765)",
+        sessionCostMeterTitle: "Estimated cost for this conversation",
+        contextMeterTitle: "Context window usage",
+        compactBtn: "🧹 Compact",
+        compactBtnTitle: "Compact chat history to save tokens",
+        workspaceLabel: "📁 Workspace:",
+        workspacePlaceholder: "Project folder path...",
+        browseFolderText: "Browse",
+        browseFolderTitle: "Open folder browser dialog",
+        changeBtn: "Change",
+        rootBtnTitle: "Switch to root project",
+        connSettingsTitle: "Configure AI connection mode (Free Gemini Web / AI Studio Key / Google Cloud)",
+        connSettingsBtn: "⚙️ Settings",
+        langSwitcherTitle: "Select Language / เลือกภาษา",
+        toggleSidebarTitle: "Toggle Sidebar",
+        newChatBtn: "+ New Conversation",
+        sessionHistoryHeader: "Conversations",
+        syncStatusSaved: "💾 Synced to local disk",
+        clearAllBtn: "Clear All",
+        clearAllConfirm: "Are you sure you want to clear all conversations? (This cannot be undone)",
+        agentModeTitle: "Control AI code read & edit permissions",
+        agentModeLabel: "Agent Mode:",
+        agentModeReadOnly: "🔒 Read-Only (Analyze only)",
+        agentModeDiff: "🛠️ Architect + Propose Diff",
+        agentModeAuto: "⚡ Auto-Edit (Directly apply edits)",
+        attachFilesLabel: "Attach Files/Images:",
+        selectFileDefault: "-- Select file (or type @ in chat) --",
+        addFileBtn: "+ Attach",
+        addImageBtn: "🖼️ Image / Ctrl+V",
+        addImageBtnTitle: "Choose image or press Ctrl+V to paste screenshot",
+        promptPlaceholder: "Type your instructions (type @ to search & attach files, e.g. 'check @server.py' or 'git diff')...",
+        undoLastTurnTitle: "Rewind last turn (remove prompt & error/response from dashboard and edit original prompt)",
+        rewindLastTurnBtn: "⏪ Rewind",
+        handoffLatestTitle: "Handoff latest response & code to Antigravity immediately",
+        handoffLatestBtn: "🤖 Handoff to Antigravity",
+        stopBtn: "⏹️ Stop",
+        sendBtn: "Send",
+        sendBtnWorking: "Working... ⏳",
+        badgeWebFree: "Web Free",
+        badgeAiStudio: "🔑 AI Studio",
+        badgeVertex: "🏢 Vertex AI",
+        wizardTitle: "⚙️ Connection Settings (Setup Wizard)",
+        wizardSubtitle: "Choose your preferred AI connection — 100% free with no credit card required",
+        wizardCloseTitle: "Close modal",
+        wizardWebTitle: "🌐 Gemini Web (100% Free, No API Key)",
+        wizardWebBadge: "Recommended • Unlimited Quota",
+        wizardWebDesc: "Connect to your gemini.google.com Chrome tab via Local CDP Bridge (Port 8765)",
+        wizardWebStepHeader: "📋 How to enable Chrome CDP:",
+        wizardWebStep1: '1. Launch Google Chrome with parameter <code class="text-[#8ab4f8]">--remote-debugging-port=9222</code> or open Remote Debugging at <code class="text-[#8ab4f8]">chrome://inspect/#remote-debugging</code>',
+        wizardWebStep2: '2. Open <a href="https://gemini.google.com/app" target="_blank" class="text-[#8ab4f8] underline">gemini.google.com/app</a> and sign in to your Google Account',
+        wizardWebConnectBtn: "🔗 Connect Browser Tab",
+        wizardStudioTitle: "🔑 Google AI Studio API Key (Free 1,500 req/day)",
+        wizardStudioBadge: "No Credit Card Required",
+        wizardStudioDesc: "Call Gemini 2.5 Flash / Pro directly via API with any standard Gmail account",
+        wizardStudioKeyLabel: "Paste Gemini API Key:",
+        wizardStudioGetKeyLink: "✨ Get Free API Key at aistudio.google.com ↗",
+        wizardStudioTestBtn: "Test Key",
+        wizardVertexTitle: "🏢 Google Cloud Vertex AI",
+        wizardVertexBadge: "Enterprise / GCP ADC",
+        wizardVertexDesc: "For users with Google Cloud Platform and gcloud auth application-default login configured",
+        wizardVertexProjectLabel: "GCP Project ID:",
+        wizardVertexRegionLabel: "Region:",
+        wizardFooterNote: "💾 Auto-saved to browser storage and local .env file",
+        wizardCancelBtn: "Cancel",
+        wizardSaveBtn: "✅ Save Settings"
+      }
+    };
+
+    let currentLang = localStorage.getItem(I18N_STORAGE_KEY) || 'th';
+
+    window.setLanguage = function (lang) {
+      currentLang = (lang === 'en') ? 'en' : 'th';
+      localStorage.setItem(I18N_STORAGE_KEY, currentLang);
+      applyLanguageUI();
+    };
+
+    window.toggleLanguage = function () {
+      setLanguage(currentLang === 'th' ? 'en' : 'th');
+    };
+
+    function getSendBtnHtml() {
+      const isEn = (currentLang === 'en');
+      return `<span>${isEn ? 'Send' : 'ส่งงาน'}</span><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+    }
+
+    function t(key, fallback = '') {
+      const dict = I18N[currentLang] || I18N.th;
+      return dict[key] !== undefined ? dict[key] : (I18N.th[key] || fallback || key);
+    }
+
+    function applyLanguageUI() {
+      const dict = I18N[currentLang] || I18N.th;
+      document.documentElement.lang = currentLang;
+
+      // 1. data-i18n
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) {
+          el.textContent = dict[key];
+        }
+      });
+
+      // 1.1 data-i18n-html (preserves inner HTML like <code> and <a>)
+      document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        const key = el.getAttribute('data-i18n-html');
+        if (dict[key]) {
+          el.innerHTML = dict[key];
+        }
+      });
+
+      // 2. data-i18n-placeholder
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (dict[key]) {
+          el.placeholder = dict[key];
+        }
+      });
+
+      // 3. data-i18n-title
+      document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        if (dict[key]) {
+          el.title = dict[key];
+        }
+      });
+
+      // 3.1 Update File Selector default option
+      if (typeof fileSelector !== 'undefined' && fileSelector && fileSelector.options && fileSelector.options.length > 0 && fileSelector.options[0].value === '') {
+        fileSelector.options[0].textContent = dict.selectFileDefault;
+      }
+
+      // 3.2 Update Browse Folder Button
+      const browseBtn = document.getElementById('browseFolderBtn');
+      if (browseBtn && !browseBtn.disabled) {
+        browseBtn.innerHTML = `<span>📂</span> <span data-i18n="browseFolderText">${dict.browseFolderText || 'เลือก'}</span>`;
+      }
+
+      // 4. Update Language Buttons Active State
+      const btnTh = document.getElementById('langBtn_th');
+      const btnEn = document.getElementById('langBtn_en');
+      if (btnTh && btnEn) {
+        if (currentLang === 'th') {
+          btnTh.className = 'px-2.5 py-1 rounded-lg bg-[#37393b] text-white transition text-xs font-bold flex items-center gap-1 shadow-sm';
+          btnEn.className = 'px-2.5 py-1 rounded-lg text-[#9aa0a6] hover:text-white transition text-xs font-normal flex items-center gap-1';
+        } else {
+          btnTh.className = 'px-2.5 py-1 rounded-lg text-[#9aa0a6] hover:text-white transition text-xs font-normal flex items-center gap-1';
+          btnEn.className = 'px-2.5 py-1 rounded-lg bg-[#37393b] text-white transition text-xs font-bold flex items-center gap-1 shadow-sm';
+        }
+      }
+
+      // 5. Update sendBtn
+      const sendBtnEl = document.getElementById('sendBtn');
+      if (sendBtnEl && !sendBtnEl.disabled) {
+        sendBtnEl.innerHTML = getSendBtnHtml();
+      }
+
+      // 6. Update Active Connection Badge
+      updateActiveConnModeBadge();
+
+      // 7. Update Model Quota UI
+      updateModelQuotaUI();
+
+      // 8. Re-render conversation
+      renderActiveConversation();
+
+      // 9. Document title
+      document.title = (currentLang === 'en')
+        ? 'Vertex AI Cloud Studio - Gemini 4 & 3.8 (OSS)'
+        : 'Vertex AI Cloud Studio - Gemini 4 & 3.8';
+    }
+
+    let sessions = [];
+    let activeSessionId = null;
+
+    let currentModel = 'gemini-3.8-flash';
+    let currentLevel = 'MEDIUM';
+    let activeProvider = 'cloud';
+    let currentWebModel = 'current';
+    let currentWebLabel = 'Web Control';
+    let currentWebLevel = 'HIGH';
+    let currentWebLevelLabel = 'สูง';
+    const OSS_CONN_KEY = 'VERTEX_OSS_CONN_CONFIG';
+    let connConfig = {
+      connectionMode: 'web',
+      apiKey: '',
+      gcpProjectId: 'your-gcp-project-id',
+      gcpLocation: 'us-central1',
+      hasServerKey: false,
+      maskedServerKey: ''
+    };
+    try {
+      const savedConn = JSON.parse(localStorage.getItem(OSS_CONN_KEY) || 'null');
+      if (savedConn && typeof savedConn === 'object') {
+        connConfig = { ...connConfig, ...savedConn };
+      }
+    } catch (e) {}
+
+    let currentAgentMode = 'diff';
+    let attachedFiles = [];
+    let attachedImages = [];
+    let workspaceFiles = [];
+    let currentWorkspace = localStorage.getItem(WORKSPACE_KEY) || DEFAULT_WS;
+
+    let currentAbortController = null;
+    let currentRunSessionId = null;
+    let mentionState = { active: false, startPos: -1, query: '', matches: [], selectedIdx: 0 };
+
+    const sidebar = document.getElementById('sidebar');
+    const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
+    const sessionListEl = document.getElementById('sessionList');
+    const sessionCountEl = document.getElementById('sessionCount');
+    const syncStatusText = document.getElementById('syncStatusText');
+    const btnNewChat = document.getElementById('btnNewChat');
+    const btnClearAllSessions = document.getElementById('btnClearAllSessions');
+
+    const modelBtn = document.getElementById('modelBtn');
+    const modelDropdown = document.getElementById('modelDropdown');
+    const display = document.getElementById('currentModelDisplay');
+    const cloudProviderDot = document.getElementById('cloudProviderDot');
+    const webModelBtn = document.getElementById('webModelBtn');
+    const webModelDropdown = document.getElementById('webModelDropdown');
+    const webProviderDot = document.getElementById('webProviderDot');
+    const currentWebModelDisplay = document.getElementById('currentWebModelDisplay');
+    const webThinkingBadge = document.getElementById('webThinkingBadge');
+    const outputBox = document.getElementById('outputBox');
+    const promptInput = document.getElementById('promptInput');
+    const atMentionMenu = document.getElementById('atMentionMenu');
+    const sendBtn = document.getElementById('sendBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const fileSelector = document.getElementById('fileSelector');
+    const attachedTags = document.getElementById('attachedTags');
+    const addImageBtn = document.getElementById('addImageBtn');
+    const imageInput = document.getElementById('imageInput');
+    const sessionCostMeter = document.getElementById('sessionCostMeter');
+    const contextMeter = document.getElementById('contextMeter');
+    const workspaceInput = document.getElementById('workspaceInput');
+    const changeWorkspaceBtn = document.getElementById('changeWorkspaceBtn');
+    const workspaceStatus = document.getElementById('workspaceStatus');
+    const agentModeSelect = document.getElementById('agentModeSelect');
+    const agentModeContainer = document.getElementById('agentModeContainer');
+
+    workspaceInput.value = currentWorkspace;
+
+    toggleSidebarBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('-ml-64');
+    });
+
+    function updateAgentModeUI() {
+      agentModeSelect.value = currentAgentMode;
+      if (currentAgentMode === 'readonly') {
+        agentModeContainer.className = 'flex items-center gap-1.5 bg-slate-900/90 border border-amber-500/50 rounded-lg px-2 py-1 transition';
+        agentModeSelect.className = 'bg-transparent text-xs font-bold text-amber-300 focus:outline-none cursor-pointer';
+      } else if (currentAgentMode === 'auto') {
+        agentModeContainer.className = 'flex items-center gap-1.5 bg-slate-900/90 border border-emerald-500/50 rounded-lg px-2 py-1 transition';
+        agentModeSelect.className = 'bg-transparent text-xs font-bold text-emerald-300 focus:outline-none cursor-pointer';
+      } else {
+        agentModeContainer.className = 'flex items-center gap-1.5 bg-slate-900/90 border border-cyan-500/40 rounded-lg px-2 py-1 transition';
+        agentModeSelect.className = 'bg-transparent text-xs font-bold text-cyan-300 focus:outline-none cursor-pointer';
+      }
+    }
+
+    agentModeSelect.addEventListener('change', () => {
+      currentAgentMode = agentModeSelect.value || 'diff';
+      updateAgentModeUI();
+      syncActiveSessionState();
+      saveSessions();
+    });
+
+    modelBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAllWebMenus();
+      const isHidden = modelDropdown.classList.contains('hidden');
+      if (isHidden) {
+        modelDropdown.classList.remove('hidden');
+        updateModelUI();
+      } else {
+        closeAllModelMenus();
+      }
+    });
+
+    webModelBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAllModelMenus();
+      const isHidden = webModelDropdown.classList.contains('hidden');
+      if (isHidden) {
+        webModelDropdown.classList.remove('hidden');
+        updateWebModelUI();
+      } else {
+        closeAllWebMenus();
+      }
+    });
+
+    function toggleModelSub(modelId, e) {
+      if (e) e.stopPropagation();
+      document.querySelectorAll('.model-row').forEach(r => {
+        if (r.getAttribute('data-model') === modelId) {
+          r.classList.toggle('is-active');
+        } else {
+          r.classList.remove('is-active');
+        }
+      });
+    }
+
+    function toggleWebThinkingSub(e) {
+      if (e) e.stopPropagation();
+      const row = document.querySelector('.web-thinking-row');
+      if (row) row.classList.toggle('is-active');
+    }
+
+    function updateProviderButtonsUI() {
+      if (activeProvider === 'web') {
+        cloudProviderDot.className = 'w-2 h-2 rounded-full bg-slate-500';
+        modelBtn.className = 'flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/90 text-xs font-semibold text-slate-400 transition shadow-sm';
+        webProviderDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+        webModelBtn.className = 'flex items-center gap-2 px-3 py-1.5 rounded-xl bg-pink-950/45 hover:bg-pink-900/55 border border-pink-500/70 text-xs font-semibold text-pink-100 transition shadow-sm shadow-pink-500/15';
+      } else {
+        cloudProviderDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        modelBtn.className = 'flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-950/45 hover:bg-cyan-900/55 border border-cyan-500/60 text-xs font-semibold text-white transition shadow-sm shadow-cyan-500/10';
+        webProviderDot.className = 'w-2 h-2 rounded-full bg-slate-500';
+        webModelBtn.className = 'flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/90 text-xs font-semibold text-slate-400 transition shadow-sm';
+      }
+      currentWebModelDisplay.textContent = `🌐 Web: ${currentWebLabel} · ${currentWebLevelLabel}`;
+      if (webThinkingBadge) webThinkingBadge.textContent = currentWebLevelLabel;
+      updateModelQuotaUI();
+    }
+
+    function selectModel(model, level, label) {
+      activeProvider = 'cloud';
+      currentModel = model;
+      currentLevel = level;
+      display.textContent = label;
+      updateModelUI();
+      updateProviderButtonsUI();
+      closeAllModelMenus();
+      if (typeof updateTokenEstimate === 'function') updateTokenEstimate();
+    }
+
+    function selectWebModel(modelId, label) {
+      activeProvider = 'web';
+      currentWebModel = modelId;
+      currentWebLabel = label;
+      updateWebModelUI();
+      updateProviderButtonsUI();
+      closeAllWebMenus();
+      if (typeof updateTokenEstimate === 'function') updateTokenEstimate();
+    }
+
+    function selectWebThinking(level, label, e) {
+      if (e) e.stopPropagation();
+      activeProvider = 'web';
+      currentWebLevel = level;
+      currentWebLevelLabel = label;
+      updateWebModelUI();
+      updateProviderButtonsUI();
+      closeAllWebMenus();
+      if (typeof updateTokenEstimate === 'function') updateTokenEstimate();
+    }
+
+    function closeAllModelMenus() {
+      modelDropdown.classList.add('hidden');
+      document.querySelectorAll('.model-row').forEach(r => r.classList.remove('is-active'));
+    }
+
+    function closeAllWebMenus() {
+      webModelDropdown.classList.add('hidden');
+      document.querySelectorAll('.web-thinking-row').forEach(r => r.classList.remove('is-active'));
+    }
+
+    function updateWebModelUI() {
+      document.querySelectorAll('.web-model-item').forEach(item => {
+        const isCurrent = item.getAttribute('data-web-model') === currentWebModel;
+        const chk = item.querySelector('.web-check');
+        if (chk) {
+          if (isCurrent) chk.classList.remove('hidden');
+          else chk.classList.add('hidden');
+        }
+        if (isCurrent) {
+          item.classList.add('bg-pink-950/40', 'border', 'border-pink-500/40');
+        } else {
+          item.classList.remove('bg-pink-950/40', 'border', 'border-pink-500/40');
+        }
+      });
+
+      document.querySelectorAll('.web-think-item').forEach(item => {
+        const isCurrent = item.getAttribute('data-web-level') === currentWebLevel;
+        const chk = item.querySelector('.web-think-check');
+        if (chk) {
+          if (isCurrent) chk.classList.remove('hidden');
+          else chk.classList.add('hidden');
+        }
+        if (isCurrent) {
+          item.classList.add('bg-pink-950/40', 'border', 'border-pink-500/40');
+        } else {
+          item.classList.remove('bg-pink-950/40', 'border', 'border-pink-500/40');
+        }
+      });
+    }
+
+    function updateModelUI() {
+      document.querySelectorAll('.model-row').forEach(row => {
+        const model = row.getAttribute('data-model');
+        const isCurrent = (model === currentModel);
+
+        const checkIcon = row.querySelector('.check-icon');
+        if (checkIcon) {
+          if (isCurrent) checkIcon.classList.remove('hidden');
+          else checkIcon.classList.add('hidden');
+        }
+
+        const levelBadge = row.querySelector('.level-badge');
+        if (levelBadge) {
+          if (isCurrent) {
+            levelBadge.textContent = currentLevel.charAt(0) + currentLevel.slice(1).toLowerCase();
+            levelBadge.className = 'text-[11px] level-badge font-mono text-cyan-300 font-bold';
+          } else {
+            levelBadge.className = 'text-[11px] level-badge font-mono text-slate-400';
+          }
+        }
+
+        row.querySelectorAll('.sub-item').forEach(item => {
+          const fnCall = item.getAttribute('onclick') || '';
+          const isSelected = isCurrent && fnCall.includes(`'${currentLevel}'`);
+          const subCheck = item.querySelector('.sub-check');
+          if (subCheck) {
+            if (isSelected) {
+              subCheck.classList.remove('hidden');
+              item.classList.add('bg-cyan-950/40', 'border', 'border-cyan-500/40');
+            } else {
+              subCheck.classList.add('hidden');
+              item.classList.remove('bg-cyan-950/40', 'border', 'border-cyan-500/40');
+            }
+          }
+        });
+      });
+      updateModelQuotaUI();
+    }
+
+    async function updateModelQuotaUI() {
+      const badge = document.getElementById('modelQuotaBadge');
+      const dot = document.getElementById('modelQuotaDot');
+      const text = document.getElementById('modelQuotaText');
+      if (!badge || !dot || !text) return;
+
+      if (activeProvider === 'web') {
+        badge.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border transition shadow-sm select-none cursor-pointer border-purple-500/40 bg-purple-950/30 text-purple-300';
+        dot.className = 'w-2 h-2 rounded-full bg-purple-400';
+        text.textContent = 'Web ฟรี';
+        badge.title = 'โหมด Gemini Web ฟรีและไม่มีขีดจำกัด TPM';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/model-quota?model=' + encodeURIComponent(currentModel));
+        const data = await res.json();
+        if (data.ok) {
+          if (data.status === 'exhausted') {
+            badge.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border transition shadow-sm select-none cursor-pointer border-rose-500/60 bg-rose-950/60 text-rose-300 animate-pulse hover:bg-rose-900/70';
+            dot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
+            text.textContent = 'ติดเพดาน 429';
+            badge.title = `โมเดล ${currentModel} โควต้าบนคลาวด์เต็ม (Error 429) คลิกเพื่อทดสอบยิงเช็คสดใหม่`;
+          } else {
+            badge.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border transition shadow-sm select-none cursor-pointer border-emerald-500/40 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/50';
+            dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+            text.textContent = 'พร้อมใช้';
+            badge.title = `โมเดล ${currentModel} โควต้าปกติพร้อมส่งงาน (คลิกเพื่อทดสอบยิงเช็คสด)`;
+          }
+        }
+      } catch (e) {}
+    }
+
+    async function probeCurrentModelQuota() {
+      const badge = document.getElementById('modelQuotaBadge');
+      const text = document.getElementById('modelQuotaText');
+      const dot = document.getElementById('modelQuotaDot');
+      if (!badge || !text) return;
+      if (activeProvider === 'web') return;
+      text.textContent = 'กำลังเช็ค...';
+      dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-spin';
+      try {
+        await fetch('/api/probe-quota?model=' + encodeURIComponent(currentModel) + '&thinkingLevel=' + encodeURIComponent(currentLevel));
+        await updateModelQuotaUI();
+      } catch (e) {
+        await updateModelQuotaUI();
+      }
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!modelDropdown.contains(e.target) && !modelBtn.contains(e.target)) {
+        closeAllModelMenus();
+      }
+      if (!webModelDropdown.contains(e.target) && !webModelBtn.contains(e.target)) {
+        closeAllWebMenus();
+      }
+      if (!atMentionMenu.contains(e.target) && e.target !== promptInput) {
+        hideAtMentionMenu();
+      }
+    });
+
+    function mergeSessions(localList, serverList) {
+      const map = new Map();
+      // นำ localList เข้าก่อน
+      (localList || []).forEach(s => {
+        if (s && s.id) map.set(s.id, s);
+      });
+      // นำ serverList เข้าทับ เพื่อให้ข้อมูล Server และ Timestamp เป็นหลัก
+      (serverList || []).forEach(s => {
+        if (!s || !s.id) return;
+        const local = map.get(s.id);
+        if (!local) {
+          map.set(s.id, s);
+        } else {
+          // ถ้า server มีข้อความเท่ากันหรือมากกว่า ให้ใช้ server ทั้งชุด
+          if ((s.messages || []).length >= (local.messages || []).length) {
+            map.set(s.id, s);
+          } else {
+            // ถ้า local มีข้อความมากกว่า ให้ผสาน ts จาก server เข้ามาใน local
+            (local.messages || []).forEach((m, idx) => {
+              if (!m.ts && s.messages && s.messages[idx] && s.messages[idx].ts) {
+                m.ts = s.messages[idx].ts;
+              }
+            });
+            map.set(s.id, local);
+          }
+        }
+      });
+      return Array.from(map.values());
+    }
+
+    async function initSessions() {
+      let localList = [];
+      try {
+        const stored = localStorage.getItem(SESSIONS_KEY);
+        localList = stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        localList = [];
+      }
+
+      let serverList = [];
+      try {
+        const res = await fetch('/api/sessions');
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.sessions)) {
+          serverList = data.sessions;
+        }
+      } catch (e) {}
+
+      sessions = mergeSessions(localList, serverList);
+
+      // ตรวจสอบทุกข้อความในทุกห้อง หากข้อความใดยังไม่มี ts ให้เติมเวลาให้อัตโนมัติทันที
+      sessions.forEach(s => {
+        const baseMs = s.id && s.id.startsWith('chat_') ? parseInt(s.id.replace('chat_', '')) : Date.now();
+        const baseDate = (!isNaN(baseMs) && baseMs > 1000000000000) ? new Date(baseMs) : new Date();
+        (s.messages || []).forEach((m, idx) => {
+          if (!m.ts) {
+            const d = new Date(baseDate.getTime() + (idx * 30000));
+            const p = n => String(n).padStart(2, '0');
+            m.ts = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+          }
+        });
+      });
+
+      if (sessions.length === 0) {
+        createNewSession();
+      } else {
+        activeSessionId = sessions[0].id;
+        applySessionStateToUI(sessions[0]);
+        renderSessionList();
+        renderActiveConversation();
+        saveSessions();
+      }
+      await loadConnectionSettingsFromServer();
+      applyLanguageUI();
+      updateModelUI();
+      updateWebModelUI();
+      updateProviderButtonsUI();
+      pollBridgeHealth();
+      setInterval(pollBridgeHealth, 8000);
+    }
+
+    function updateActiveConnModeBadge() {
+      const badge = document.getElementById('activeConnModeBadge');
+      if (!badge) return;
+      const isEn = (currentLang === 'en');
+      if (connConfig.connectionMode === 'aistudio') {
+        badge.textContent = '🔑 AI Studio';
+        badge.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+      } else if (connConfig.connectionMode === 'vertex') {
+        badge.textContent = '🏢 Vertex AI';
+        badge.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40';
+      } else {
+        badge.textContent = isEn ? '🌐 Web Free' : '🌐 Web ฟรี';
+        badge.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300 border border-pink-500/40';
+      }
+    }
+
+    async function loadConnectionSettingsFromServer() {
+      try {
+        const res = await fetch('/api/connection-settings');
+        const data = await res.json();
+        if (data && data.ok && data.settings) {
+          const s = data.settings;
+          connConfig.hasServerKey = !!s.hasApiKey;
+          connConfig.maskedServerKey = s.maskedApiKey || '';
+          if (!localStorage.getItem(OSS_CONN_KEY)) {
+            connConfig.connectionMode = s.connectionMode || 'web';
+            connConfig.gcpProjectId = s.gcpProjectId || 'your-gcp-project-id';
+            connConfig.gcpLocation = s.gcpLocation || 'us-central1';
+          }
+        }
+      } catch (e) {}
+
+      // ปรับ activeProvider เริ่มต้นให้ตรงกับโหมดที่บันทึกไว้
+      if (connConfig.connectionMode === 'web') {
+        activeProvider = 'web';
+      } else {
+        activeProvider = 'cloud';
+      }
+      updateActiveConnModeBadge();
+
+      // หากเปิดใช้งานครั้งแรกและยังไม่มีการตั้งค่าใน localStorage และไม่มี Key ใน .env ให้แสดง Setup Wizard อัตโนมัติ
+      if (!localStorage.getItem(OSS_CONN_KEY) && !connConfig.hasServerKey) {
+        openConnectionWizard();
+      }
+    }
+
+    window.selectWizardMode = (mode) => {
+      ['web', 'aistudio', 'vertex'].forEach(m => {
+        const card = document.getElementById('modeCard_' + m);
+        const radio = document.getElementById('radioMode_' + m);
+        const activeBorder = m === 'web' ? 'border-pink-400' : (m === 'aistudio' ? 'border-emerald-400' : 'border-[#8ab4f8]');
+        if (card) {
+          card.classList.remove('border-pink-400', 'border-emerald-400', 'border-[#8ab4f8]', 'border-[#3c4043]');
+          card.classList.add(m === mode ? activeBorder : 'border-[#3c4043]');
+        }
+        if (radio) radio.checked = (m === mode);
+      });
+      connConfig._draftMode = mode;
+    };
+
+    window.openConnectionWizard = () => {
+      const modal = document.getElementById('connectionWizardModal');
+      if (!modal) return;
+      const keyInput = document.getElementById('wizardApiKeyInput');
+      const keyHint = document.getElementById('wizardApiKeyHint');
+      const projInput = document.getElementById('wizardProjectIdInput');
+      const regInput = document.getElementById('wizardRegionInput');
+      const banner = document.getElementById('wizardStatusBanner');
+
+      if (banner) banner.classList.add('hidden');
+      if (keyInput) keyInput.value = connConfig.apiKey || '';
+      if (keyHint) {
+        const isEn = (currentLang === 'en');
+        keyHint.textContent = connConfig.hasServerKey
+          ? (isEn ? `🔒 Gemini API Key is configured in local .env (${connConfig.maskedServerKey}) — paste only if changing` : `🔒 พบ API Key บันทึกไว้ในไฟล์ .env บนเครื่องแล้ว (${connConfig.maskedServerKey}) — วางใหม่เฉพาะเมื่อต้องการเปลี่ยน`)
+          : (isEn ? '💡 No API Key saved yet (click the link above to generate a free key with your Gmail)' : '💡 ยังไม่ได้บันทึก API Key (สามารถกดลิงก์ด้านบนเพื่อสร้าง Key ฟรีด้วยบัญชี Gmail)');
+      }
+      if (projInput) projInput.value = connConfig.gcpProjectId || 'your-gcp-project-id';
+      if (regInput) regInput.value = connConfig.gcpLocation || 'us-central1';
+
+      selectWizardMode(connConfig.connectionMode || 'web');
+      modal.classList.remove('hidden');
+    };
+
+    window.closeConnectionWizard = () => {
+      const modal = document.getElementById('connectionWizardModal');
+      if (modal) modal.classList.add('hidden');
+    };
+
+    window.toggleWizardKeyVisibility = (e) => {
+      if (e) e.stopPropagation();
+      const inp = document.getElementById('wizardApiKeyInput');
+      if (inp) inp.type = (inp.type === 'password') ? 'text' : 'password';
+    };
+
+    window.connectBrowserTabFromWizard = async (e) => {
+      if (e) e.stopPropagation();
+      selectWizardMode('web');
+      const isEn = (currentLang === 'en');
+      const stEl = document.getElementById('wizardWebStatus');
+      if (stEl) {
+        stEl.textContent = isEn ? '⏳ Checking Chrome CDP tab...' : '⏳ กำลังตรวจสอบแท็บ Chrome CDP...';
+        stEl.className = 'text-xs font-mono text-amber-300';
+      }
+      await pollBridgeHealth();
+      try {
+        const res = await fetch('/api/bridge-status');
+        const data = await res.json();
+        if (data && data.online && data.cdpConnected) {
+          if (stEl) {
+            stEl.textContent = isEn ? '🟢 Connected to Gemini Web tab successfully!' : '🟢 เชื่อมต่อแท็บ Gemini Web สำเร็จแล้ว!';
+            stEl.className = 'text-xs font-mono text-emerald-400 font-bold';
+          }
+        } else if (data && data.online) {
+          if (stEl) {
+            stEl.textContent = isEn ? '🟡 Bridge is online. Please open https://gemini.google.com/app in Chrome' : '🟡 Bridge ออนไลน์แล้ว กรุณาเปิดแท็บ https://gemini.google.com/app ใน Chrome';
+            stEl.className = 'text-xs font-mono text-amber-300';
+          }
+        } else {
+          if (stEl) {
+            stEl.textContent = isEn ? '🔴 Bridge port 8765 not found. Please run run.bat' : '🔴 ไม่พบ Bridge พอร์ต 8765 กรุณารัน run.bat หรือเปิด Chrome CDP';
+            stEl.className = 'text-xs font-mono text-rose-400';
+          }
+        }
+      } catch (err) {
+        if (stEl) {
+          stEl.textContent = isEn ? '🔴 Failed to connect to server' : '🔴 เชื่อมต่อ Server ไม่ได้';
+          stEl.className = 'text-xs font-mono text-rose-400';
+        }
+      }
+    };
+
+    window.testWizardConnection = async (e, mode) => {
+      if (e) e.stopPropagation();
+      selectWizardMode(mode);
+      const isEn = (currentLang === 'en');
+      const banner = document.getElementById('wizardStatusBanner');
+      const keyVal = (document.getElementById('wizardApiKeyInput')?.value || '').trim();
+      if (banner) {
+        banner.classList.remove('hidden');
+        banner.className = 'p-3 rounded-xl text-xs font-semibold bg-slate-800 text-amber-300 border border-amber-500/40';
+        banner.textContent = isEn ? '⏳ Testing connection with Google AI Studio...' : '⏳ กำลังทดสอบการเชื่อมต่อกับ Google AI Studio...';
+      }
+      try {
+        const res = await fetch('/api/test-connection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(keyVal ? { 'X-Gemini-Api-Key': keyVal } : {})
+          },
+          body: JSON.stringify({ connectionMode: mode, apiKey: keyVal })
+        });
+        const data = await res.json();
+        if (banner) {
+          if (data.ok) {
+            banner.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-950/70 text-emerald-300 border border-emerald-500/50';
+            banner.textContent = data.message || (isEn ? '✅ Connected successfully!' : '✅ เชื่อมต่อสำเร็จ!');
+          } else {
+            banner.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-950/70 text-rose-300 border border-rose-500/50';
+            banner.textContent = '❌ ' + (data.error || (isEn ? 'Connection failed' : 'เชื่อมต่อไม่สำเร็จ'));
+          }
+        }
+      } catch (err) {
+        if (banner) {
+          banner.className = 'p-3 rounded-xl text-xs font-semibold bg-rose-950/70 text-rose-300 border border-rose-500/50';
+          banner.textContent = isEn ? '❌ Cannot reach local server' : '❌ ไม่สามารถติดต่อ Server ได้';
+        }
+      }
+    };
+
+    window.saveConnectionWizardSettings = async () => {
+      const mode = connConfig._draftMode || connConfig.connectionMode || 'web';
+      const keyVal = (document.getElementById('wizardApiKeyInput')?.value || '').trim();
+      const projVal = (document.getElementById('wizardProjectIdInput')?.value || '').trim() || 'your-gcp-project-id';
+      const regVal = (document.getElementById('wizardRegionInput')?.value || '').trim() || 'us-central1';
+
+      connConfig.connectionMode = mode;
+      if (keyVal) connConfig.apiKey = keyVal;
+      connConfig.gcpProjectId = projVal;
+      connConfig.gcpLocation = regVal;
+
+      // เก็บเฉพาะโหมดและโปรเจกต์ลง localStorage (ไม่เก็บ apiKey แบบ Plaintext ในเบราว์เซอร์)
+      localStorage.setItem(OSS_CONN_KEY, JSON.stringify({
+        connectionMode: connConfig.connectionMode,
+        gcpProjectId: connConfig.gcpProjectId,
+        gcpLocation: connConfig.gcpLocation
+      }));
+
+      try {
+        const res = await fetch('/api/connection-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(keyVal ? { 'X-Gemini-Api-Key': keyVal } : {})
+          },
+          body: JSON.stringify({
+            connectionMode: mode,
+            apiKey: keyVal,
+            gcpProjectId: projVal,
+            gcpLocation: regVal
+          })
+        });
+        const data = await res.json();
+        if (data && data.ok && data.settings) {
+          connConfig.hasServerKey = !!data.settings.hasApiKey;
+          connConfig.maskedServerKey = data.settings.maskedApiKey || '';
+        }
+      } catch (e) {}
+
+      if (mode === 'web') {
+        activeProvider = 'web';
+      } else {
+        activeProvider = 'cloud';
+      }
+      updateActiveConnModeBadge();
+      updateProviderButtonsUI();
+      updateModelQuotaUI();
+      closeConnectionWizard();
+    };
+
+    function syncActiveSessionState() {
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active) return;
+      active.workspace = currentWorkspace;
+      active.attachedFiles = [...attachedFiles];
+      active.agentMode = currentAgentMode;
+    }
+
+    let saveTimer = null;
+    function saveSessions() {
+      try {
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+      } catch (e) {
+        if (syncStatusText) syncStatusText.textContent = '⚠️ หน่วยความจำเบราว์เซอร์เต็ม (ใช้ไฟล์ Server)';
+      }
+      renderSessionList();
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessions })
+        }).then(r => r.json()).then(d => {
+          if (d && d.ok && syncStatusText) {
+            syncStatusText.textContent = '💾 ซิงก์ไฟล์ Server แล้ว';
+          }
+        }).catch(() => {});
+      }, 250);
+    }
+
+    function applySessionStateToUI(s) {
+      if (!s) return;
+      currentWorkspace = s.workspace || localStorage.getItem(WORKSPACE_KEY) || DEFAULT_WS;
+      attachedFiles = Array.isArray(s.attachedFiles) ? [...s.attachedFiles] : [];
+      currentAgentMode = s.agentMode || 'diff';
+      workspaceInput.value = currentWorkspace;
+      updateAgentModeUI();
+      renderTags();
+      loadFileListForWorkspace(currentWorkspace);
+    }
+
+    function createNewSession() {
+      const newId = 'chat_' + Date.now();
+      const newSession = {
+        id: newId,
+        title: 'การสนทนาใหม่',
+        createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        workspace: currentWorkspace,
+        attachedFiles: [],
+        agentMode: currentAgentMode,
+        messages: []
+      };
+      sessions.unshift(newSession);
+      activeSessionId = newId;
+      attachedFiles = [];
+      renderTags();
+      saveSessions();
+      renderActiveConversation();
+    }
+
+    function deleteSession(id, e) {
+      if (e) e.stopPropagation();
+      if (!confirm('ต้องการลบห้องสนทนานี้หรือไม่?')) return;
+      sessions = sessions.filter(s => s.id !== id);
+      if (sessions.length === 0) {
+        createNewSession();
+      } else {
+        if (activeSessionId === id) {
+          activeSessionId = sessions[0].id;
+          applySessionStateToUI(sessions[0]);
+        }
+        try {
+          localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+        } catch (err) {}
+        renderSessionList();
+        renderActiveConversation();
+      }
+      fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessions, deletedSessionId: id })
+      }).catch(() => {});
+    }
+
+    function renderSessionList() {
+      sessionCountEl.textContent = sessions.length;
+      sessionListEl.innerHTML = sessions.map(s => {
+        const isActive = s.id === activeSessionId;
+        return `
+          <div onclick="switchSession('${s.id}')" class="group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition ${
+            isActive ? 'bg-[#282a2c] text-[#ffffff] font-semibold border border-[#3c4043]' : 'text-[#c4c7c5] hover:bg-[#282a2c]/60 hover:text-[#ffffff]'
+          }">
+            <div class="flex items-center gap-2 truncate">
+              <span class="text-xs">💬</span>
+              <span class="truncate text-xs">${escapeHtml(s.title)}</span>
+            </div>
+            <button onclick="deleteSession('${s.id}', event)" class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 p-1 transition" title="ลบห้องนี้">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function switchSession(id) {
+      syncActiveSessionState();
+      activeSessionId = id;
+      const target = sessions.find(s => s.id === id);
+      applySessionStateToUI(target);
+      renderSessionList();
+      renderActiveConversation();
+    }
+
+    function renderMarkdown(text) {
+      if (!text) return '';
+      if (typeof marked !== 'undefined') {
+        const rawHtml = marked.parse(text, { breaks: true, gfm: true });
+        if (typeof DOMPurify !== 'undefined') {
+          return DOMPurify.sanitize(rawHtml);
+        }
+        return rawHtml;
+      }
+      return escapeHtml(text).replace(/\n/g, '<br>');
+    }
+
+    function enhanceCodeBlocks(container) {
+      container.querySelectorAll('.markdown-body pre').forEach(pre => {
+        if (pre.parentElement && pre.parentElement.classList.contains('code-block-wrapper')) return;
+        const codeEl = pre.querySelector('code');
+        const rawCode = codeEl ? codeEl.textContent : pre.textContent;
+
+        let lang = 'code';
+        if (codeEl && codeEl.className) {
+          const match = codeEl.className.match(/language-([a-zA-Z0-9_+-]+)/);
+          if (match) lang = match[1];
+        }
+
+        if (typeof hljs !== 'undefined' && codeEl) {
+          try { hljs.highlightElement(codeEl); } catch (e) {}
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'code-block-wrapper';
+
+        const header = document.createElement('div');
+        header.className = 'code-block-header';
+        header.innerHTML = `<span class="font-mono uppercase text-[11px] text-cyan-300/90">${escapeHtml(lang)}</span>`;
+
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600/70 text-[11px] transition flex items-center gap-1';
+        const copyLabel = () => (currentLang === 'en' ? '📋 Copy Code' : '📋 คัดลอกโค้ด');
+        const copiedLabel = () => (currentLang === 'en' ? '✅ Copied' : '✅ คัดลอกแล้ว');
+        copyBtn.textContent = copyLabel();
+        copyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(rawCode);
+          } catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = rawCode;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          copyBtn.textContent = copiedLabel();
+          setTimeout(() => { copyBtn.textContent = copyLabel(); }, 1500);
+        });
+
+        header.appendChild(copyBtn);
+        pre.parentNode.insertBefore(wrapper, pre);
+        wrapper.appendChild(header);
+        wrapper.appendChild(pre);
+      });
+    }
+
+    function updateSessionCostMeter(active) {
+      let totalCost = 0;
+      let totalTokens = 0;
+      let historyChars = 0;
+      let msgCount = 0;
+
+      if (active && Array.isArray(active.messages)) {
+        msgCount = active.messages.length;
+        active.messages.forEach(m => {
+          historyChars += (m.text || '').length;
+          if (m.usage) {
+            totalCost += Number(m.usage.costThb || 0);
+            totalTokens += Number(m.usage.totalTokens || 0);
+          }
+        });
+      }
+
+      if (sessionCostMeter) {
+        sessionCostMeter.textContent = (currentLang === 'en')
+          ? `🪙 Session: ฿${totalCost.toFixed(4)} (${totalTokens.toLocaleString()} tokens)`
+          : `🪙 ห้องนี้ใช้ไป: ฿${totalCost.toFixed(4)} (${totalTokens.toLocaleString()} tokens)`;
+      }
+
+      if (contextMeter) {
+        const estPromptTokens = Math.round(historyChars / 3.5);
+        const pct = Math.min(100, Math.round((estPromptTokens / 200000) * 100));
+        contextMeter.textContent = `📊 Context: ${pct}% (${msgCount} msgs)`;
+        contextMeter.className = pct >= 80 ? 'text-rose-400 font-bold' : (pct >= 50 ? 'text-amber-300' : 'text-slate-300');
+      }
+    }
+
+    window.compactActiveSession = () => {
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active || !Array.isArray(active.messages) || active.messages.length <= 4) {
+        alert('ห้องนี้ยังมีข้อความไม่มาก (ต้องมีมากกว่า 4 ข้อความจึงจะย่อความจำได้)');
+        return;
+      }
+      const older = active.messages.slice(0, -2);
+      const recent = active.messages.slice(-2);
+      const summaryLines = older.map((m, i) => {
+        const roleTag = m.role === 'user' ? 'ผู้ใช้' : 'AI';
+        const snippet = String(m.text || '').replace(/\s+/g, ' ').slice(0, 180);
+        const tools = (m.scannedFiles && m.scannedFiles.length > 0) ? ` [สืบค้น: ${m.scannedFiles.slice(0, 4).join(', ')}]` : '';
+        return `${i + 1}. [${roleTag}]${tools}: ${snippet}${snippet.length >= 180 ? '...' : ''}`;
+      });
+      const summaryMsg = {
+        role: 'assistant',
+        modelInfo: 'System Memory Compact',
+        ts: nowTs(),
+        text: `### 🧹 สรุปความจำบทสนทนาก่อนหน้า (ย่อจาก ${older.length} ข้อความ)\n\n` + summaryLines.join('\n'),
+        scannedFiles: [],
+        proposedEdits: []
+      };
+      active.messages = [summaryMsg, ...recent];
+      saveSessions();
+      renderActiveConversation();
+    };
+
+    function renderDiffCards(proposedEdits, msgIdx) {
+      if (!Array.isArray(proposedEdits) || proposedEdits.length === 0) return '';
+      const isEn = (currentLang === 'en');
+      return proposedEdits.map((edit, editIdx) => {
+        let actionHtml = '';
+        let cardBorder = 'border-emerald-500/35';
+
+        if (edit.applied) {
+          actionHtml = `
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="px-3 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center gap-1.5">
+                <span>${isEn ? '🎉 File updated successfully' : '🎉 แก้ไขไฟล์จริงแล้ว'}</span>
+                <span class="font-mono text-[10px] text-emerald-400/80">(Backup: ${escapeHtml((edit.backupPath || '').split(/[\\/]/).pop())})</span>
+              </div>
+              <button type="button" onclick="undoProposedEdit(${msgIdx}, ${editIdx}, this)" class="px-3 py-1 rounded-lg bg-amber-600/25 hover:bg-amber-600/45 border border-amber-500/40 text-amber-200 text-xs font-semibold transition flex items-center gap-1">
+                <span>${isEn ? '⏪ Undo Changes' : '⏪ ย้อนกลับโค้ดเดิม (Undo)'}</span>
+              </button>
+            </div>`;
+        } else if (edit.rejected) {
+          cardBorder = 'border-slate-700/70 opacity-75';
+          actionHtml = `
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-600 text-slate-400 text-xs font-semibold">${isEn ? '🚫 Proposed edit rejected' : '🚫 ปฏิเสธข้อเสนอนี้แล้ว'}</span>
+              <button type="button" onclick="unrejectProposedEdit(${msgIdx}, ${editIdx})" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 text-xs transition">
+                ${isEn ? '↩️ Reopen Edit' : '↩️ เปิดข้อเสนออีกครั้ง'}
+              </button>
+            </div>`;
+        } else {
+          actionHtml = `
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" onclick="applyProposedEdit(${msgIdx}, ${editIdx}, this)" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition flex items-center gap-1.5">
+                <span>${isEn ? '✅ Auto-Backup & Apply' : '✅ ยืนยันนำไปใช้จริง (Auto-Backup & Apply)'}</span>
+              </button>
+              <button type="button" onclick="rejectProposedEdit(${msgIdx}, ${editIdx})" class="px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-500/40 text-xs font-semibold transition">
+                ${isEn ? '✖️ Reject' : '✖️ ปฏิเสธ (Reject)'}
+              </button>
+            </div>`;
+        }
+
+        const lineLabel = isEn ? `(lines ${edit.startLine}-${edit.endLine})` : `(บรรทัด ${edit.startLine}-${edit.endLine})`;
+        const oldLabel = isEn ? '- Original Code' : '- โค้ดเดิม';
+        const newLabel = isEn ? '+ New Code' : '+ โค้ดใหม่';
+        const noOld = isEn ? '(no original code)' : '(ไม่มีโค้ดเดิม)';
+
+        return `
+          <div class="rounded-xl border ${cardBorder} bg-[#121622] overflow-hidden shadow-lg">
+            <div class="px-3.5 py-2.5 bg-[#181e2e] border-b border-slate-700/80 flex flex-wrap items-center justify-between gap-2">
+              <div class="space-y-0.5">
+                <div class="text-xs font-mono font-bold text-cyan-300">📝 ${escapeHtml(edit.relPath || edit.path)} <span class="text-slate-400">${lineLabel}</span></div>
+                <div class="text-xs text-slate-300">${escapeHtml(edit.description || '')}</div>
+              </div>
+              ${actionHtml}
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-800 text-xs font-mono">
+              <div class="p-3 bg-rose-950/20">
+                <div class="text-[10px] uppercase tracking-wider font-bold text-rose-400 mb-1.5">${oldLabel}</div>
+                <pre class="!bg-transparent !p-0 text-rose-200/90 overflow-x-auto whitespace-pre-wrap break-all">${escapeHtml(edit.oldCode || noOld)}</pre>
+              </div>
+              <div class="p-3 bg-emerald-950/20">
+                <div class="text-[10px] uppercase tracking-wider font-bold text-emerald-400 mb-1.5">${newLabel}</div>
+                <pre class="!bg-transparent !p-0 text-emerald-200 overflow-x-auto whitespace-pre-wrap break-all">${escapeHtml(edit.newCode || '')}</pre>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.rejectProposedEdit = (msgIdx, editIdx) => {
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active || !active.messages[msgIdx] || !active.messages[msgIdx].proposedEdits) return;
+      const edit = active.messages[msgIdx].proposedEdits[editIdx];
+      if (!edit || edit.applied) return;
+      edit.rejected = true;
+      saveSessions();
+      renderActiveConversation();
+    };
+
+    window.unrejectProposedEdit = (msgIdx, editIdx) => {
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active || !active.messages[msgIdx] || !active.messages[msgIdx].proposedEdits) return;
+      const edit = active.messages[msgIdx].proposedEdits[editIdx];
+      if (!edit) return;
+      edit.rejected = false;
+      saveSessions();
+      renderActiveConversation();
+    };
+
+    window.undoProposedEdit = async (msgIdx, editIdx, btnEl) => {
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active || !active.messages[msgIdx] || !active.messages[msgIdx].proposedEdits) return;
+      const edit = active.messages[msgIdx].proposedEdits[editIdx];
+      if (!edit || !edit.applied || !edit.backupPath) return;
+
+      if (!confirm(`ต้องการย้อนกลับไฟล์ '${edit.relPath || edit.path}' กลับไปเป็นเวอร์ชันก่อนแก้ไขหรือไม่?`)) return;
+
+      if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.textContent = 'กำลังกู้คืนไฟล์เดิม... ⏳';
+      }
+
+      try {
+        const res = await fetch('/api/undo-edit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path: edit.path,
+            backupPath: edit.backupPath,
+            workspace: active.workspace || currentWorkspace
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          edit.applied = false;
+          edit.restoredAt = new Date().toLocaleTimeString();
+          saveSessions();
+          renderActiveConversation();
+        } else {
+          alert('❌ ย้อนกลับไฟล์ไม่สำเร็จ: ' + (data.error || 'Unknown error'));
+          if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.textContent = '⏪ ย้อนกลับโค้ดเดิม (Undo)';
+          }
+        }
+      } catch (e) {
+        alert('❌ ไม่สามารถเชื่อมต่อกับ Server ได้');
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.textContent = '⏪ ย้อนกลับโค้ดเดิม (Undo)';
+        }
+      }
+    };
+
+    window.applyProposedEdit = async (msgIdx, editIdx, btnEl) => {
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active || !active.messages[msgIdx] || !active.messages[msgIdx].proposedEdits) return;
+      const edit = active.messages[msgIdx].proposedEdits[editIdx];
+      if (!edit || edit.applied) return;
+
+      if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.textContent = 'กำลังสำรองไฟล์และบันทึก... ⏳';
+      }
+
+      try {
+        const res = await fetch('/api/apply-edit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path: edit.path,
+            startLine: edit.startLine,
+            endLine: edit.endLine,
+            oldCode: edit.oldCode,
+            newCode: edit.newCode,
+            workspace: active.workspace || currentWorkspace,
+            agentMode: currentAgentMode
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          edit.applied = true;
+          edit.rejected = false;
+          edit.backupPath = data.backupPath;
+          saveSessions();
+          renderActiveConversation();
+        } else {
+          alert('❌ แก้ไขไฟล์ไม่สำเร็จ: ' + (data.error || 'Unknown error'));
+          if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.textContent = '✅ ยืนยันนำไปใช้จริง (Auto-Backup & Apply)';
+          }
+        }
+      } catch (e) {
+        alert('❌ ไม่สามารถเชื่อมต่อกับ Server ได้');
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.textContent = '✅ ยืนยันนำไปใช้จริง (Auto-Backup & Apply)';
+        }
+      }
+    };
+
+    async function syncDeleteLogToServer(active) {
+      if (!active) return;
+      try {
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+      } catch (e) {}
+      renderSessionList();
+      renderActiveConversation();
+
+      const remainingUserPrompts = (active.messages || [])
+        .filter(m => m.role === 'user')
+        .map(m => m.text || '');
+
+      try {
+        const res = await fetch('/api/delete-messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: active.id,
+            remainingUserPrompts,
+            sessions
+          })
+        });
+        const d = await res.json();
+        if (d && d.ok && syncStatusText) {
+          syncStatusText.textContent = '💾 ลบประวัติและซิงก์ conversations.jsonl แล้ว';
+        }
+      } catch (e) {}
+    }
+
+    window.rewindToMessage = async (idx) => {
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active || !Array.isArray(active.messages) || idx < 0 || idx >= active.messages.length) return;
+      const targetMsg = active.messages[idx];
+      if (targetMsg && targetMsg.text) {
+        promptInput.value = targetMsg.text;
+      }
+      active.messages = active.messages.slice(0, idx);
+      await syncDeleteLogToServer(active);
+      promptInput.focus();
+      if (typeof updateTokenEstimate === 'function') updateTokenEstimate();
+    };
+
+    window.deleteMessageTurn = async (idx) => {
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active || !Array.isArray(active.messages) || idx < 0 || idx >= active.messages.length) return;
+      const hasNextAssistant = (idx + 1 < active.messages.length) && active.messages[idx + 1].role !== 'user';
+      active.messages.splice(idx, hasNextAssistant ? 2 : 1);
+      await syncDeleteLogToServer(active);
+    };
+
+    window.deleteSingleMessage = async (idx) => {
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active || !Array.isArray(active.messages) || idx < 0 || idx >= active.messages.length) return;
+      active.messages.splice(idx, 1);
+      await syncDeleteLogToServer(active);
+    };
+
+    window.handoffToAntigravity = async (idx, btnEl) => {
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active || !Array.isArray(active.messages) || idx < 0 || idx >= active.messages.length) return;
+      const m = active.messages[idx];
+      let userPrompt = '';
+      for (let i = idx - 1; i >= 0; i--) {
+        if (active.messages[i] && active.messages[i].role === 'user') {
+          userPrompt = active.messages[i].text || '';
+          break;
+        }
+      }
+      const origHtml = btnEl ? btnEl.innerHTML : '';
+      if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.textContent = '⏳ กำลังส่ง...';
+      }
+      try {
+        const res = await fetch('/api/handoff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ts: m.ts || nowTs(),
+            sessionId: active.id,
+            sessionTitle: active.title || '',
+            workspace: active.workspace || currentWorkspace,
+            modelInfo: m.modelInfo || '',
+            userPrompt,
+            aiAnswer: m.text || '',
+            scannedFiles: m.scannedFiles || [],
+            proposedEdits: m.proposedEdits || []
+          })
+        });
+        const data = await res.json();
+        if (data && data.ok) {
+          if (syncStatusText) syncStatusText.textContent = '🤖 ส่งต่องานลง handoff_latest.md แล้ว';
+          if (btnEl) {
+            btnEl.textContent = '✅ ส่งให้ Antigravity แล้ว!';
+            setTimeout(() => {
+              btnEl.innerHTML = origHtml;
+              btnEl.disabled = false;
+            }, 2500);
+          }
+        } else {
+          alert('❌ ส่งต่อไม่สำเร็จ: ' + ((data && data.error) || 'Unknown error'));
+          if (btnEl) {
+            btnEl.innerHTML = origHtml;
+            btnEl.disabled = false;
+          }
+        }
+      } catch (e) {
+        alert('❌ ไม่สามารถเชื่อมต่อ Server ได้');
+        if (btnEl) {
+          btnEl.innerHTML = origHtml;
+          btnEl.disabled = false;
+        }
+      }
+    };
+
+    window.handoffLatestAnswer = async (btnEl) => {
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active || !Array.isArray(active.messages) || active.messages.length === 0) {
+        alert('⚠️ ไม่พบข้อความในห้องสนทนานี้');
+        return;
+      }
+      // ค้นหาข้อความตอบกลับล่าสุดของโมเดล
+      let latestModelIdx = -1;
+      for (let i = active.messages.length - 1; i >= 0; i--) {
+        const r = active.messages[i] && active.messages[i].role;
+        if (r === 'assistant' || r === 'model') {
+          latestModelIdx = i;
+          break;
+        }
+      }
+      if (latestModelIdx === -1) {
+        alert('⚠️ ยังไม่มีคำตอบจากโมเดลในห้องนี้');
+        return;
+      }
+      await handoffToAntigravity(latestModelIdx, btnEl);
+    };
+
+    async function pollBridgeHealth() {
+      const badge = document.getElementById('bridgeStatusBadge');
+      const dot = document.getElementById('bridgeStatusDot');
+      const textEl = document.getElementById('bridgeStatusText');
+      if (!badge || !dot || !textEl) return;
+      const isEn = (currentLang === 'en');
+      try {
+        const res = await fetch('/api/bridge-status');
+        const data = await res.json();
+        if (data && data.online && data.cdpConnected) {
+          dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+          textEl.textContent = isEn ? '🟢 Gemini Web: Ready' : '🟢 Gemini Web: พร้อมใช้';
+          badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/35 text-[11px] font-mono text-emerald-300 hover:border-emerald-400 transition';
+        } else if (data && data.online) {
+          dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+          textEl.textContent = isEn ? '🟡 Bridge: Connecting' : '🟡 Bridge: รอเชื่อมแท็บ';
+          badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/35 text-[11px] font-mono text-amber-300 hover:border-amber-400 transition';
+        } else {
+          dot.className = 'w-2 h-2 rounded-full bg-rose-500';
+          textEl.textContent = isEn ? '🔴 Gemini Web: Offline' : '🔴 Gemini Web: ออฟไลน์';
+          badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-500/10 border border-rose-500/35 text-[11px] font-mono text-rose-300 hover:border-rose-400 transition';
+        }
+      } catch (e) {
+        const isEn = (currentLang === 'en');
+        dot.className = 'w-2 h-2 rounded-full bg-rose-500';
+        textEl.textContent = isEn ? '🔴 Gemini Web: Offline' : '🔴 Gemini Web: ออฟไลน์';
+        badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-500/10 border border-rose-500/35 text-[11px] font-mono text-rose-300 hover:border-rose-400 transition';
+      }
+    }
+
+    window.undoLastTurn = async () => {
+      const sendBtn = document.getElementById('sendBtn');
+      if (sendBtn && sendBtn.disabled) return;
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active || !Array.isArray(active.messages) || active.messages.length === 0) return;
+      let lastUserIdx = -1;
+      for (let i = active.messages.length - 1; i >= 0; i--) {
+        if (active.messages[i].role === 'user') {
+          lastUserIdx = i;
+          break;
+        }
+      }
+      if (lastUserIdx >= 0) {
+        promptInput.value = active.messages[lastUserIdx].text || '';
+        active.messages = active.messages.slice(0, lastUserIdx);
+      } else {
+        active.messages.pop();
+      }
+      await syncDeleteLogToServer(active);
+      promptInput.focus();
+      if (typeof updateTokenEstimate === 'function') updateTokenEstimate();
+    };
+
+    function renderActiveConversation() {
+      const active = sessions.find(s => s.id === activeSessionId);
+      updateSessionCostMeter(active);
+      const isEn = (currentLang === 'en');
+
+      const undoBtn = document.getElementById('undoLastTurnBtn');
+      if (undoBtn) {
+        const hasMsgs = !!(active && Array.isArray(active.messages) && active.messages.length > 0);
+        undoBtn.disabled = !hasMsgs;
+        undoBtn.classList.toggle('opacity-40', !hasMsgs);
+        undoBtn.classList.toggle('cursor-not-allowed', !hasMsgs);
+      }
+
+      if (!active || active.messages.length === 0) {
+        outputBox.innerHTML = `
+          <div class="text-center text-[#9aa0a6] py-16">
+            <div class="text-4xl mb-3">✨</div>
+            <p class="font-semibold text-[#ffffff] text-base">${isEn ? 'Vertex AI Cloud Studio Ready!' : 'Vertex AI Cloud Studio พร้อมทำงาน!'}</p>
+            <p class="text-xs text-[#c4c7c5] mt-1.5">${isEn ? 'Type <span class="font-mono text-[#8ab4f8] bg-[#282a2c] border border-[#3c4043] px-2 py-0.5 rounded-lg">@filename</span> to attach code, press <span class="font-mono text-[#c4c7c5] bg-[#282a2c] border border-[#3c4043] px-2 py-0.5 rounded-lg">Ctrl+V</span> to paste images, or switch Agent Mode above' : 'พิมพ์ <span class="font-mono text-[#8ab4f8] bg-[#282a2c] border border-[#3c4043] px-2 py-0.5 rounded-lg">@ชื่อไฟล์</span> เพื่อแนบโค้ด, กด <span class="font-mono text-[#c4c7c5] bg-[#282a2c] border border-[#3c4043] px-2 py-0.5 rounded-lg">Ctrl+V</span> เพื่อวางรูปภาพ, หรือสลับโหมด Read-Only / Diff / Auto-Edit ด้านบน'}</p>
+            <p class="text-xs text-[#9aa0a6] mt-2">${isEn ? 'Current Workspace:' : 'Workspace ของห้องนี้:'} <span class="font-mono text-[#8ab4f8]">${escapeHtml(currentWorkspace)}</span></p>
+          </div>
+        `;
+        return;
+      }
+
+      outputBox.innerHTML = active.messages.map((m, idx) => {
+        if (m.role === 'user') {
+          const imgBadge = (m.imageNames && m.imageNames.length > 0) ? `
+            <div class="flex flex-wrap gap-1.5 pt-1.5">
+              ${m.imageNames.map(n => `<span class="px-2.5 py-1 rounded-lg bg-indigo-900/60 border border-indigo-400/50 text-indigo-200 text-xs font-mono shadow-sm">🖼️ ${escapeHtml(n)}</span>`).join('')}
+            </div>
+          ` : '';
+          return `
+            <div class="p-4 sm:p-5 rounded-3xl bg-[#282a2c] border border-[#3c4043] space-y-2.5 shadow-sm transition">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-[#c4c7c5]">
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-full bg-[#3c4043] flex items-center justify-center text-xs text-white">👤</span>
+                  <span class="font-bold text-[#ffffff] text-xs sm:text-sm">${isEn ? 'Your Prompt' : 'คำสั่งของคุณ'}</span>
+                  <span class="text-[11px] text-[#9aa0a6] font-mono">(${escapeHtml(m.modelInfo || 'User')})</span>
+                  ${fmtTs(m.ts)}
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <button type="button" onclick="rewindToMessage(${idx})" class="px-2.5 py-1 rounded-lg bg-[#1e1f20] hover:bg-[#37393b] border border-[#3c4043] text-[#c4c7c5] hover:text-white text-[11px] font-semibold transition" title="${isEn ? 'Rewind to this message and remove subsequent history' : 'ดึงข้อความนี้กลับมาแก้ และลบข้อความตั้งแต่จุดนี้ลงไปออกจากแดชบอร์ดและ conversations.jsonl'}">${isEn ? '⏪ Rewind Here' : '⏪ ย้อนแก้ไขจุดนี้'}</button>
+                  <button type="button" onclick="deleteMessageTurn(${idx})" class="px-2.5 py-1 rounded-lg bg-[#1e1f20] hover:bg-rose-950/40 border border-[#3c4043] hover:border-rose-500/50 text-[#c4c7c5] hover:text-rose-300 text-[11px] font-semibold transition" title="${isEn ? 'Delete this question & answer turn' : 'ลบข้อความและคำตอบคู่นี้ออกจากแดชบอร์ดและ conversations.jsonl'}">${isEn ? '🗑️ Delete' : '🗑️ ลบ'}</button>
+                  <span class="hidden sm:inline text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#1e1f20] border border-[#3c4043] text-[#9aa0a6] font-semibold tracking-wider">USER PROMPT</span>
+                </div>
+              </div>
+              <div class="text-[#e3e3e3] whitespace-pre-wrap text-sm sm:text-base leading-relaxed pl-1 select-text font-normal">${escapeHtml(m.text)}</div>
+              ${imgBadge}
+            </div>
+          `;
+        } else {
+          const filesBadge = (m.scannedFiles && m.scannedFiles.length > 0) ? `
+            <div class="flex flex-wrap items-center gap-1.5 p-2.5 rounded-xl bg-[#282a2c] border border-[#3c4043] text-xs text-[#8ab4f8] font-mono">
+              <span class="font-sans font-semibold">${isEn ? '🔍 Inspected files & tools (' + m.scannedFiles.length + '):' : '🔍 เครื่องมือ/ไฟล์ที่โมเดลสืบค้นอัตโนมัติ (' + m.scannedFiles.length + '):'}</span>
+              ${m.scannedFiles.map(f => `<span class="bg-[#1e1f20] px-2 py-0.5 rounded text-[11px] text-[#e3e3e3] border border-[#3c4043]">${escapeHtml(f)}</span>`).join('')}
+            </div>
+          ` : '';
+
+          const diffCardsHtml = renderDiffCards(m.proposedEdits, idx);
+
+          const usageHtml = (m.usage && m.usage.totalTokens > 0) ? `
+            <div class="pt-2.5 mt-2 border-t border-[#282a2c] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[#9aa0a6]">
+              <span>🪙 ${isEn ? 'This turn' : 'รอบนี้ใช้'}: Input ${Number(m.usage.promptTokens || 0).toLocaleString()} | Thinking ${Number(m.usage.thoughtTokens || 0).toLocaleString()} | Output ${Number(m.usage.outputTokens || 0).toLocaleString()} tokens (${m.usage.iterations || 1} ${isEn ? 'turns' : 'รอบ'})</span>
+              <div class="flex items-center gap-2">
+                <span class="text-amber-300 font-bold bg-[#282a2c] px-2.5 py-0.5 rounded-full border border-[#3c4043]">${isEn ? 'Est. ~฿' : 'ประมาณ ~฿'}${Number(m.usage.costThb || 0).toFixed(4)} ${isEn ? 'THB' : 'บาท'}</span>
+                <button type="button" onclick="handoffToAntigravity(${idx}, this)" class="px-2.5 py-1 rounded-lg bg-[#282a2c] hover:bg-[#37393b] border border-[#3c4043] text-[#8ab4f8] hover:text-white text-[11px] font-semibold transition" title="${isEn ? 'Handoff response & code to Antigravity' : 'ส่งคำตอบและโค้ดชุดนี้ให้ Antigravity ทันที'}">${isEn ? '🤖 Handoff' : '🤖 ส่งต่อให้ Antigravity'}</button>
+              </div>
+            </div>
+          ` : `
+            <div class="pt-2 mt-2 border-t border-[#282a2c] flex justify-end">
+              <button type="button" onclick="handoffToAntigravity(${idx}, this)" class="px-2.5 py-1 rounded-lg bg-[#282a2c] hover:bg-[#37393b] border border-[#3c4043] text-[#8ab4f8] hover:text-white text-[11px] font-semibold transition" title="${isEn ? 'Handoff response & code to Antigravity' : 'ส่งคำตอบและโค้ดชุดนี้ให้ Antigravity ทันที'}">${isEn ? '🤖 Handoff' : '🤖 ส่งต่อให้ Antigravity'}</button>
+            </div>
+          `;
+
+          const responseFrom = isEn ? 'Response from' : 'คำตอบจาก';
+          const delAnsTitle = isEn ? 'Delete this response/error' : 'ลบคำตอบ/Error นี้ออกจากแดชบอร์ดและ conversations.jsonl';
+          const delAnsBtn = isEn ? '🗑️ Delete Response' : '🗑️ ลบคำตอบ/Error นี้';
+
+          return `
+            <div class="p-5 sm:p-6 rounded-2xl bg-[#1e1f20] border border-[#2d2f31] space-y-3.5 shadow-md">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="text-xs text-[#8ab4f8] font-bold flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-[#8ab4f8]"></span>
+                  ${responseFrom} ${escapeHtml(m.modelInfo || 'Google Cloud Vertex AI')}
+                  ${fmtTs(m.ts)}
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <button type="button" onclick="handoffToAntigravity(${idx}, this)" class="px-2.5 py-1 rounded-lg bg-[#282a2c] hover:bg-[#37393b] border border-[#3c4043] text-[#8ab4f8] hover:text-white text-[11px] font-semibold transition" title="${isEn ? 'Handoff response & code to Antigravity' : 'ส่งคำตอบและโค้ดชุดนี้ให้ Antigravity ทันที (บันทึกลง handoff_latest.md โดยไม่ต้องก๊อปวาง)'}">${isEn ? '🤖 Handoff' : '🤖 ส่งต่อให้ Antigravity'}</button>
+                  <button type="button" onclick="deleteSingleMessage(${idx})" class="px-2.5 py-1 rounded-lg bg-[#282a2c] hover:bg-rose-950/40 border border-[#3c4043] hover:border-rose-500/50 text-[#c4c7c5] hover:text-rose-300 text-[11px] font-semibold transition" title="${delAnsTitle}">${delAnsBtn}</button>
+                </div>
+              </div>
+              ${filesBadge}
+              <div class="markdown-body text-sm sm:text-base leading-relaxed select-text">${renderMarkdown(m.text)}</div>
+              ${diffCardsHtml}
+              ${usageHtml}
+            </div>
+          `;
+        }
+      }).join('');
+
+      enhanceCodeBlocks(outputBox);
+      outputBox.scrollTop = outputBox.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    btnNewChat.addEventListener('click', createNewSession);
+
+    btnClearAllSessions.addEventListener('click', () => {
+      if (confirm(t('clearAllConfirm'))) {
+        sessions = [];
+        createNewSession();
+        fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessions, clearAll: true })
+        }).catch(() => {});
+      }
+    });
+
+    function populateFileSelector(files) {
+      workspaceFiles = Array.isArray(files) ? files : [];
+      fileSelector.innerHTML = `<option value="">${escapeHtml(t('selectFileDefault'))}</option>`;
+      workspaceFiles.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = f;
+        fileSelector.appendChild(opt);
+      });
+    }
+
+    function showWorkspaceStatus(msg, isError = false) {
+      workspaceStatus.textContent = msg;
+      workspaceStatus.classList.remove('hidden');
+      workspaceStatus.className = isError ? 'text-[11px] text-rose-400' : 'text-[11px] text-emerald-400';
+      setTimeout(() => { workspaceStatus.classList.add('hidden'); }, 3000);
+    }
+
+    async function switchWorkspace(newPath) {
+      const target = (newPath || '').trim();
+      if (!target) return;
+      try {
+        const res = await fetch('/api/workspace', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspace: target })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          currentWorkspace = data.workspace;
+          workspaceInput.value = currentWorkspace;
+          localStorage.setItem(WORKSPACE_KEY, currentWorkspace);
+          attachedFiles = [];
+          syncActiveSessionState();
+          saveSessions();
+          renderTags();
+          populateFileSelector(data.files);
+          renderActiveConversation();
+          showWorkspaceStatus('✓ สลับโฟลเดอร์แล้ว');
+        } else {
+          showWorkspaceStatus('❌ ' + (data.error || 'เปลี่ยนไม่สำเร็จ'), true);
+        }
+      } catch (e) {
+        showWorkspaceStatus('❌ เชื่อมต่อ Server ไม่ได้', true);
+      }
+    }
+
+    window.applyWorkspacePreset = (path) => {
+      workspaceInput.value = path;
+      switchWorkspace(path);
+    };
+
+    let fpState = { current: '', parent: '', folders: [] };
+
+    window.chooseWorkspaceFolder = async () => {
+      const modal = document.getElementById('folderPickerModal');
+      if (!modal) return;
+      const isEn = (currentLang === 'en');
+      document.getElementById('fpModalTitle').textContent = isEn ? 'Select Workspace Folder' : 'เลือกโฟลเดอร์งาน (Select Workspace)';
+      document.getElementById('fpFilterInput').placeholder = isEn ? '🔍 Filter folders...' : '🔍 กรองชื่อโฟลเดอร์ในหน้านี้...';
+      document.getElementById('fpCancelBtn').textContent = isEn ? 'Cancel' : 'ยกเลิก';
+      document.getElementById('fpSelectBtn').textContent = isEn ? '✅ Select This Folder' : '✅ เลือกโฟลเดอร์นี้';
+      document.getElementById('fpFilterInput').value = '';
+      modal.classList.remove('hidden');
+      const curPath = (workspaceInput ? workspaceInput.value : '').trim() || currentWorkspace;
+      await browseDir(curPath);
+    };
+
+    window.closeFolderPickerModal = () => {
+      const modal = document.getElementById('folderPickerModal');
+      if (modal) modal.classList.add('hidden');
+    };
+
+    window.browseDir = async (targetPath) => {
+      const listEl = document.getElementById('fpListContainer');
+      const pathInput = document.getElementById('fpPathInput');
+      const quickBar = document.getElementById('fpQuickBar');
+      const statusHint = document.getElementById('fpStatusHint');
+      const upBtn = document.getElementById('fpUpBtn');
+      const isEn = (currentLang === 'en');
+
+      listEl.innerHTML = `<div class="text-center py-8 text-xs text-[#9aa0a6]">⏳ ${isEn ? 'Loading folders...' : 'กำลังโหลดรายชื่อโฟลเดอร์...'}</div>`;
+
+      try {
+        const res = await fetch('/api/browse-dirs?path=' + encodeURIComponent(targetPath || ''));
+        const data = await res.json();
+        fpState.current = data.current || '';
+        fpState.parent = data.parent || '';
+        fpState.folders = Array.isArray(data.folders) ? data.folders : [];
+
+        pathInput.value = fpState.current;
+        statusHint.textContent = fpState.current;
+        upBtn.disabled = !fpState.parent;
+        upBtn.classList.toggle('opacity-40', !fpState.parent);
+
+        const chips = [
+          ...(data.drives || []).map(d => ({ label: `💾 ${d.name}`, path: d.path })),
+          ...(data.shortcuts || []).map(s => ({ label: `⭐ ${s.name}`, path: s.path })),
+        ];
+        quickBar.innerHTML = chips.map(c =>
+          `<button type="button" onclick="browseDir(${JSON.stringify(c.path).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg bg-[#282a2c] hover:bg-[#37393b] border border-[#3c4043] text-[#e3e3e3] font-mono transition">${escapeHtml(c.label)}</button>`
+        ).join('');
+
+        if (!data.ok && data.error) {
+          listEl.innerHTML = `<div class="p-3 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs">⚠️ ${escapeHtml(data.error)}</div>`;
+          return;
+        }
+        document.getElementById('fpFilterInput').value = '';
+        renderFolderList(fpState.folders);
+      } catch (e) {
+        listEl.innerHTML = `<div class="p-3 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs">❌ ${isEn ? 'Failed to load directories from server' : 'ไม่สามารถดึงรายการโฟลเดอร์จาก Server ได้'}</div>`;
+      }
+    };
+
+    window.browseParentDir = () => {
+      if (fpState.parent) browseDir(fpState.parent);
+    };
+
+    window.filterFolderList = (query) => {
+      const q = (query || '').trim().toLowerCase();
+      const filtered = q ? fpState.folders.filter(f => f.name.toLowerCase().includes(q)) : fpState.folders;
+      renderFolderList(filtered);
+    };
+
+    function renderFolderList(items) {
+      const listEl = document.getElementById('fpListContainer');
+      const isEn = (currentLang === 'en');
+      if (!items || items.length === 0) {
+        listEl.innerHTML = `<div class="text-center py-8 text-xs text-[#9aa0a6]">${isEn ? '(No subfolders inside this directory)' : '(ไม่มีโฟลเดอร์ย่อยในตำแหน่งนี้ — กด "✅ เลือกโฟลเดอร์นี้" ได้เลย)'}</div>`;
+        return;
+      }
+      listEl.innerHTML = items.map(f => {
+        const pathArg = JSON.stringify(f.path).replace(/"/g, '&quot;');
+        const dimCls = f.isHidden ? 'opacity-65' : '';
+        return `
+          <div onclick="browseDir(${pathArg})" class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#131314] hover:bg-[#282a2c] border border-transparent hover:border-[#3c4043] cursor-pointer transition group ${dimCls}">
+            <div class="flex items-center gap-2.5 truncate">
+              <span class="text-amber-300">📁</span>
+              <span class="text-xs font-mono text-[#e3e3e3] group-hover:text-white truncate">${escapeHtml(f.name)}</span>
+            </div>
+            <span class="text-[11px] text-[#9aa0a6] group-hover:text-[#8ab4f8] shrink-0">›</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.confirmSelectedFolder = async () => {
+      const target = (document.getElementById('fpPathInput').value || fpState.current || '').trim();
+      if (!target) return;
+      closeFolderPickerModal();
+      workspaceInput.value = target;
+      await switchWorkspace(target);
+    };
+
+    window.triggerNativeOsFolderDialog = async () => {
+      const btn = document.getElementById('fpNativeOsBtn');
+      const isEn = (currentLang === 'en');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = isEn ? '⏳ Waiting for Windows...' : '⏳ รอหน้าต่าง Windows...';
+      }
+      try {
+        const res = await fetch('/api/choose-folder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ current: fpState.current || currentWorkspace })
+        });
+        const data = await res.json();
+        if (data && data.ok && data.folder) {
+          closeFolderPickerModal();
+          workspaceInput.value = data.folder;
+          await switchWorkspace(data.folder);
+        } else if (data && data.error) {
+          alert(data.error);
+        }
+      } catch (err) {
+        alert(isEn ? 'Could not open native OS folder dialog.' : 'ไม่สามารถเปิดหน้าต่าง Windows Explorer ได้');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '🪟 Windows Explorer';
+        }
+      }
+    };
+
+    changeWorkspaceBtn.addEventListener('click', () => switchWorkspace(workspaceInput.value));
+    workspaceInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        switchWorkspace(workspaceInput.value);
+      }
+    });
+
+    async function loadFileListForWorkspace(wsPath) {
+      try {
+        const res = await fetch('/api/files?workspace=' + encodeURIComponent(wsPath || currentWorkspace));
+        const data = await res.json();
+        if (data.ok) {
+          populateFileSelector(data.files);
+        }
+      } catch (e) {}
+    }
+
+    document.getElementById('addFileBtn').addEventListener('click', () => {
+      const val = fileSelector.value;
+      if (val && !attachedFiles.includes(val)) {
+        attachedFiles.push(val);
+        syncActiveSessionState();
+        saveSessions();
+        renderTags();
+      }
+    });
+
+    /* @mention Autocomplete */
+    function fuzzyScore(filePath, query) {
+      if (!query) return 1;
+      const lowerF = filePath.toLowerCase();
+      const lowerQ = query.toLowerCase();
+      const idx = lowerF.indexOf(lowerQ);
+      if (idx !== -1) return 100 - idx * 0.1 - lowerF.length * 0.01;
+      let qi = 0;
+      for (let i = 0; i < lowerF.length && qi < lowerQ.length; i++) {
+        if (lowerF[i] === lowerQ[qi]) qi++;
+      }
+      return qi === lowerQ.length ? (10 - lowerF.length * 0.01) : -1;
+    }
+
+    function renderAtMentionMenu() {
+      if (!mentionState.active || mentionState.matches.length === 0) {
+        atMentionMenu.classList.add('hidden');
+        return;
+      }
+      atMentionMenu.innerHTML = `
+        <div class="px-2 py-1 text-[10px] font-semibold text-slate-400 border-b border-slate-700/60 flex items-center justify-between">
+          <span>📎 เลือกไฟล์เพื่อแนบเข้าบริบท</span>
+          <span class="font-mono text-slate-500">↑↓ เลือก · Enter แนบ</span>
+        </div>
+      ` + mentionState.matches.map((f, i) => {
+        const selectedCls = i === mentionState.selectedIdx
+          ? 'bg-cyan-600/30 text-cyan-200 border border-cyan-500/50'
+          : 'text-slate-300 hover:bg-slate-800/80 border border-transparent';
+        return `
+          <div onclick="selectAtMentionByIndex(${i})" class="px-2.5 py-1.5 rounded-lg cursor-pointer font-mono truncate transition ${selectedCls}">
+            📄 ${escapeHtml(f)}
+          </div>
+        `;
+      }).join('');
+      atMentionMenu.classList.remove('hidden');
+    }
+
+    function hideAtMentionMenu() {
+      mentionState.active = false;
+      mentionState.matches = [];
+      atMentionMenu.classList.add('hidden');
+    }
+
+    window.selectAtMentionByIndex = (idx) => {
+      const f = mentionState.matches[idx];
+      if (f) window.selectAtMention(f);
+    };
+
+    window.selectAtMention = (filePath) => {
+      if (!filePath) return;
+      if (!attachedFiles.includes(filePath)) {
+        attachedFiles.push(filePath);
+        syncActiveSessionState();
+        saveSessions();
+        renderTags();
+      }
+      const val = promptInput.value;
+      const pos = promptInput.selectionStart || val.length;
+      const before = val.slice(0, mentionState.startPos);
+      const after = val.slice(pos);
+      const inserted = `@${filePath} `;
+      promptInput.value = before + inserted + after;
+      const newCursor = before.length + inserted.length;
+      promptInput.focus();
+      promptInput.setSelectionRange(newCursor, newCursor);
+      hideAtMentionMenu();
+      if (typeof updateTokenEstimate === 'function') updateTokenEstimate();
+    };
+
+    promptInput.addEventListener('input', () => {
+      const pos = promptInput.selectionStart || 0;
+      const before = promptInput.value.slice(0, pos);
+      const match = before.match(/(?:^|\s)@([^\s@]*)$/);
+      if (match && workspaceFiles.length > 0) {
+        const query = match[1];
+        const atStart = pos - query.length - 1;
+        const scored = workspaceFiles
+          .map(f => ({ f, s: fuzzyScore(f, query) }))
+          .filter(x => x.s >= 0)
+          .sort((a, b) => b.s - a.s)
+          .slice(0, 8)
+          .map(x => x.f);
+        if (scored.length > 0) {
+          mentionState = { active: true, startPos: atStart, query, matches: scored, selectedIdx: 0 };
+          renderAtMentionMenu();
+          if (typeof updateTokenEstimate === 'function') updateTokenEstimate();
+          return;
+        }
+      }
+      hideAtMentionMenu();
+      if (typeof updateTokenEstimate === 'function') updateTokenEstimate();
+    });
+
+    function addImageFile(file, customName = null) {
+      if (!file || !file.type || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target.result;
+        const commaIdx = dataUrl.indexOf(',');
+        const b64 = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl;
+        attachedImages.push({
+          name: customName || file.name || `screenshot_${Date.now()}.png`,
+          mimeType: file.type || 'image/png',
+          data: b64,
+          dataUrl: dataUrl
+        });
+        renderTags();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    addImageBtn.addEventListener('click', () => imageInput.click());
+    imageInput.addEventListener('change', (e) => {
+      Array.from(e.target.files || []).forEach(f => addImageFile(f));
+      imageInput.value = '';
+    });
+
+    window.addEventListener('paste', (e) => {
+      const items = (e.clipboardData && e.clipboardData.items) ? Array.from(e.clipboardData.items) : [];
+      const imgItems = items.filter(it => it.type && it.type.startsWith('image/'));
+      if (imgItems.length > 0) {
+        e.preventDefault();
+        imgItems.forEach((it, idx) => {
+          const file = it.getAsFile();
+          if (file) addImageFile(file, `pasted_image_${Date.now()}_${idx + 1}.png`);
+        });
+      }
+    });
+
+    function renderTags() {
+      const fileHtml = attachedFiles.map((f, i) => `
+        <span class="px-2.5 py-0.5 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-xs flex items-center gap-1.5 font-mono">
+          📄 ${escapeHtml(f)}
+          <button type="button" onclick="removeFile(${i})" class="text-rose-400 hover:text-rose-200 font-bold ml-1">×</button>
+        </span>
+      `).join('');
+
+      const imgHtml = attachedImages.map((img, i) => `
+        <span class="px-2 py-0.5 rounded-lg bg-violet-950/80 border border-violet-500/40 text-violet-200 text-xs flex items-center gap-1.5 font-mono">
+          <img src="${img.dataUrl}" alt="preview" class="w-5 h-5 object-cover rounded border border-violet-400/50" />
+          <span>${escapeHtml(img.name)}</span>
+          <button type="button" onclick="removeImage(${i})" class="text-rose-400 hover:text-rose-200 font-bold ml-1">×</button>
+        </span>
+      `).join('');
+
+      attachedTags.innerHTML = fileHtml + imgHtml;
+      if (typeof updateTokenEstimate === 'function') updateTokenEstimate();
+    }
+
+    window.removeFile = (idx) => {
+      attachedFiles.splice(idx, 1);
+      syncActiveSessionState();
+      saveSessions();
+      renderTags();
+    };
+
+    window.removeImage = (idx) => {
+      attachedImages.splice(idx, 1);
+      renderTags();
+    };
+
+    function createLiveProgressElement() {
+      const card = document.createElement('div');
+      card.id = 'liveProgressCard';
+      card.className = 'p-4 rounded-2xl bg-[#1e1f20] border border-[#3c4043] space-y-2 shadow-lg animate-pulse';
+      card.innerHTML = `
+        <div class="flex items-center gap-2.5 text-xs font-bold text-[#8ab4f8]">
+          <svg class="w-4 h-4 animate-spin text-[#8ab4f8]" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+          <span id="liveProgressStep">🚀 กำลังส่งคำสั่งและเริ่มวิเคราะห์...</span>
+        </div>
+        <div id="liveProgressHistory" class="text-[11px] font-mono text-[#9aa0a6] space-y-0.5 pl-6"></div>
+      `;
+      outputBox.appendChild(card);
+      outputBox.scrollTop = outputBox.scrollHeight;
+    }
+
+    stopBtn.addEventListener('click', () => {
+      stopBtn.disabled = true;
+      const stepEl = document.getElementById('liveProgressStep');
+      const isEn = (currentLang === 'en');
+      if (stepEl) stepEl.textContent = isEn ? '⏹️ Cancelling task...' : '⏹️ กำลังสั่งหยุดการทำงาน...';
+      const sid = currentRunSessionId || activeSessionId;
+      fetch('/api/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: sid })
+      }).catch(() => {});
+      if (currentAbortController) {
+        currentAbortController.abort();
+      }
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      hideAtMentionMenu();
+      let prompt = promptInput.value.trim();
+      if (!prompt && attachedImages.length === 0) return;
+      if (!prompt && attachedImages.length > 0) {
+        prompt = 'ช่วยวิเคราะห์รูปภาพที่แนบมานี้หน่อย';
+      }
+
+      // Pre-flight 429 Warning Check for Vertex AI Cloud
+      if (activeProvider === 'cloud' && currentTokenRisk === 'danger') {
+        const proceed = confirm(
+          "⚠️ คำขอนี้มีขนาดใหญ่มาก (> 25,000 tokens) และเสี่ยงต่อการติด Error 429 (Resource Exhausted) บน Vertex AI Cloud!\n\n" +
+          "• กด [ตกลง / OK] เพื่อลองส่งต่อไปยัง Cloud (อาจติด 429 หากเกินโควต้า TPM ของโปรเจกต์)\n" +
+          "• หรือกด [ยกเลิก / Cancel] เพื่อให้ระบบสลับไปใช้โหมด 🌐 Gemini Web ให้ทันที (ฟรีและไม่ติดจำกัดโควต้า)"
+        );
+        if (!proceed) {
+          selectWebModel('current', 'Web Control');
+          updateTokenEstimate();
+          return;
+        }
+      }
+
+      const active = sessions.find(s => s.id === activeSessionId);
+      if (!active) return;
+
+      if (active.messages.length === 0) {
+        active.title = prompt.slice(0, 32) + (prompt.length > 32 ? '...' : '');
+      }
+
+      const historyToSend = [];
+      for (const m of active.messages.slice(-12)) {
+        let text = m.text || '';
+        const isErrOrStop = (m.role !== 'user') && (
+          text.trim().startsWith('❌ Error:') ||
+          text.trim().startsWith('❌ ไม่สามารถเชื่อมต่อ') ||
+          text.trim().startsWith('⏹️ หยุดการทำงาน')
+        );
+        if (isErrOrStop) {
+          if (historyToSend.length > 0 && historyToSend[historyToSend.length - 1].role === 'user') {
+            historyToSend.pop();
+          }
+          continue;
+        }
+        if (m.role === 'assistant' && m.scannedFiles && m.scannedFiles.length > 0) {
+          text = `[ประวัติการสืบค้นในเทิร์นนี้: ${m.scannedFiles.join(', ')}]\n\n` + text;
+        }
+        historyToSend.push({ role: m.role, text });
+      }
+
+      const imagesToSend = attachedImages.map(img => ({ mimeType: img.mimeType, data: img.data }));
+      const imageNames = attachedImages.map(img => img.name);
+      const filesToSend = [...attachedFiles];
+
+      const userModelInfo = activeProvider === 'web'
+        ? `🌐 Gemini Web (${currentWebLabel} · ${currentWebLevelLabel})`
+        : display.textContent;
+      active.messages.push({
+        role: 'user',
+        text: prompt,
+        modelInfo: userModelInfo,
+        ts: nowTs(),
+        imageNames: imageNames
+      });
+      syncActiveSessionState();
+      saveSessions();
+      renderActiveConversation();
+      createLiveProgressElement();
+
+      promptInput.value = '';
+      attachedImages = [];
+      renderTags();
+
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = (currentLang === 'en') ? 'Working... ⏳' : 'กำลังทำงาน... ⏳';
+      stopBtn.classList.remove('hidden');
+      stopBtn.disabled = false;
+
+      currentAbortController = new AbortController();
+      currentRunSessionId = active.id;
+
+      const statusPoller = setInterval(async () => {
+        try {
+          const stRes = await fetch('/api/status?sessionId=' + encodeURIComponent(active.id));
+          const stData = await stRes.json();
+          if (stData.ok && stData.status) {
+            const stepEl = document.getElementById('liveProgressStep');
+            const histEl = document.getElementById('liveProgressHistory');
+            if (stepEl && stData.status.step) {
+              stepEl.textContent = stData.status.step;
+            }
+            if (histEl && Array.isArray(stData.status.steps) && stData.status.steps.length > 1) {
+              const prevSteps = stData.status.steps.slice(0, -1).slice(-5);
+              histEl.innerHTML = prevSteps.map(s => `<div>• ${escapeHtml(s)}</div>`).join('');
+            }
+            outputBox.scrollTop = outputBox.scrollHeight;
+          }
+        } catch (e) {}
+      }, 600);
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(connConfig.apiKey ? { 'X-Gemini-Api-Key': connConfig.apiKey } : {})
+          },
+          signal: currentAbortController.signal,
+          body: JSON.stringify({
+            sessionId: active.id,
+            sessionTitle: active.title,
+            workspace: active.workspace || currentWorkspace,
+            agentMode: active.agentMode || currentAgentMode,
+            provider: activeProvider,
+            connectionMode: connConfig.connectionMode,
+            apiKey: connConfig.apiKey || '',
+            gcpProjectId: connConfig.gcpProjectId,
+            gcpLocation: connConfig.gcpLocation,
+            model: activeProvider === 'web' ? ('web:' + currentWebModel) : currentModel,
+            thinkingLevel: currentLevel,
+            webModel: currentWebModel,
+            webThinkingLevel: currentWebLevel,
+            prompt: prompt,
+            files: filesToSend,
+            images: imagesToSend,
+            history: historyToSend
+          })
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          active.messages.push({
+            role: 'assistant',
+            text: data.answer,
+            modelInfo: userModelInfo,
+            ts: nowTs(),
+            scannedFiles: data.scannedFiles || [],
+            usage: data.usage || {},
+            proposedEdits: data.proposedEdits || []
+          });
+        } else {
+          active.messages.push({ role: 'assistant', text: '❌ Error: ' + data.error, modelInfo: 'System Error', ts: nowTs() });
+          updateModelQuotaUI();
+        }
+      } catch (e) {
+        if (e && e.name === 'AbortError') {
+          active.messages.push({ role: 'assistant', text: '⏹️ หยุดการทำงานตามคำสั่งของผู้ใช้แล้ว', modelInfo: 'Stopped by User', ts: nowTs() });
+        } else {
+          active.messages.push({ role: 'assistant', text: '❌ ไม่สามารถเชื่อมต่อกับ Server ได้', modelInfo: 'Network Error', ts: nowTs() });
+        }
+      } finally {
+        clearInterval(statusPoller);
+        currentAbortController = null;
+        currentRunSessionId = null;
+        stopBtn.classList.add('hidden');
+        stopBtn.disabled = false;
+        saveSessions();
+        if (activeSessionId === active.id) {
+          renderActiveConversation();
+        }
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = getSendBtnHtml();
+      }
+    });
+
+    promptInput.addEventListener('keydown', (e) => {
+      if (mentionState.active && mentionState.matches.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          mentionState.selectedIdx = (mentionState.selectedIdx + 1) % mentionState.matches.length;
+          renderAtMentionMenu();
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          mentionState.selectedIdx = (mentionState.selectedIdx - 1 + mentionState.matches.length) % mentionState.matches.length;
+          renderAtMentionMenu();
+          return;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          selectAtMention(mentionState.matches[mentionState.selectedIdx]);
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          hideAtMentionMenu();
+          return;
+        }
+      }
+
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendBtn.click();
+      }
+    });
+
+    /* Token Gauge & Pre-flight 429 Estimator */
+    let currentTokenRisk = 'safe';
+    let tokenEstimateTimer = null;
+
+    function renderTokenGauge(totalTokens, risk, reason) {
+      const badge = document.getElementById('tokenGaugeBadge');
+      const dot = document.getElementById('tokenGaugeDot');
+      const text = document.getElementById('tokenGaugeText');
+      if (!badge || !dot || !text) return;
+
+      currentTokenRisk = risk;
+
+      if (activeProvider === 'web') {
+        badge.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border transition shadow-sm select-none cursor-pointer border-purple-500/50 bg-purple-950/40 text-purple-200 hover:bg-purple-900/50';
+        dot.className = 'w-2 h-2 rounded-full bg-purple-400 animate-pulse';
+        text.textContent = '🌐 Web Free (ไม่จำกัด TPM)';
+        badge.title = 'โหมด Gemini Web ฟรีและไม่มีขีดจำกัดโควต้า TPM (คลิกเพื่อดูรายละเอียด)';
+        return;
+      }
+
+      const formatted = totalTokens >= 1000
+        ? (totalTokens / 1000).toFixed(1) + 'k'
+        : totalTokens.toString();
+
+      if (risk === 'danger') {
+        badge.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border transition shadow-sm select-none cursor-pointer border-rose-500/60 bg-rose-950/60 text-rose-200 hover:bg-rose-900/70 animate-pulse';
+        dot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
+        text.innerHTML = `⚠️ ~${formatted} tokens <span class="font-bold underline ml-1">เสี่ยง 429!</span>`;
+        badge.title = `คำขอนี้ประมาณ ~${totalTokens.toLocaleString()} tokens ซึ่งเกิน 25k tokens และเสี่ยงต่อการติด Error 429 บน Cloud!\nคลิกที่นี่เพื่อสลับไปใช้ Gemini Web ฟรีทันที`;
+      } else if (risk === 'warning') {
+        badge.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border transition shadow-sm select-none cursor-pointer border-amber-500/50 bg-amber-950/40 text-amber-200 hover:bg-amber-900/50';
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        text.textContent = `⚡ ~${formatted} tokens`;
+        badge.title = `คำขอนี้ประมาณ ~${totalTokens.toLocaleString()} tokens (ระดับปานกลาง)\nหากส่งบ่อยในหนึ่งนาทีอาจเฉียดโควต้า TPM ได้`;
+      } else {
+        badge.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border transition shadow-sm select-none cursor-pointer border-emerald-500/40 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/40';
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        text.textContent = `🟢 ~${formatted} tokens`;
+        badge.title = `ประมาณ ~${totalTokens.toLocaleString()} tokens (อยู่ในเกณฑ์ปลอดภัย ไม่ติด 429)`;
+      }
+    }
+
+    function updateTokenEstimate() {
+      const badge = document.getElementById('tokenGaugeBadge');
+      if (!badge) return;
+
+      if (activeProvider === 'web') {
+        renderTokenGauge(0, 'safe_web', 'Web provider');
+        return;
+      }
+
+      const prompt = promptInput ? promptInput.value.trim() : '';
+      if (!prompt && (!attachedFiles || attachedFiles.length === 0)) {
+        badge.className = 'hidden items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border transition shadow-sm select-none cursor-pointer';
+        currentTokenRisk = 'safe';
+        return;
+      }
+
+      if (tokenEstimateTimer) clearTimeout(tokenEstimateTimer);
+      tokenEstimateTimer = setTimeout(async () => {
+        try {
+          const res = await fetch('/api/estimate-tokens', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: promptInput ? promptInput.value : '',
+              files: attachedFiles || [],
+              workspace: currentWorkspace,
+              provider: activeProvider
+            })
+          });
+          const data = await res.json();
+          if (data && data.ok) {
+            renderTokenGauge(data.total_tokens || 0, data.risk || 'safe', data.reason || '');
+          }
+        } catch (e) {
+          const charLen = (promptInput ? promptInput.value.length : 0);
+          const est = Math.round(charLen / 3.6);
+          const r = est > 25000 ? 'danger' : (est > 10000 ? 'warning' : 'safe');
+          renderTokenGauge(est, r, 'Client fallback');
+        }
+      }, 200);
+    }
+
+    window.handleTokenGaugeClick = () => {
+      if (activeProvider === 'cloud' && (currentTokenRisk === 'danger' || currentTokenRisk === 'warning')) {
+        const ok = confirm('💡 สลับไปใช้โหมด 🌐 Gemini Web ทันทีหรือไม่?\n\n• โหมด Web จะคุยผ่าน Chrome CDP (Web Control)\n• ฟรี 100% ไม่จำกัดโควต้า TPM และไม่ติด Error 429 แน่นอน\n• เหมาะอย่างยิ่งสำหรับการแนบโค้ดทั้งไฟล์หรือคำสั่งขนาดยาว');
+        if (ok) {
+          selectWebModel('current', 'Web Control');
+        }
+      } else if (activeProvider === 'web') {
+        alert('🌐 ขณะนี้คุณอยู่ในโหมด Gemini Web ซึ่งไม่มีขีดจำกัดโควต้า TPM (ไม่ติด Error 429)');
+      } else {
+        alert('📊 สถานะโทเค็น: ปลอดภัย (ขนาดคำขอไม่เกินขีดจำกัดโควต้าของโปรเจกต์)');
+      }
+    };
+
+    initSessions();
+  </script>
+</body>
+</html>

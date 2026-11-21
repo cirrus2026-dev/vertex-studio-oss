@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.env
+
+# User Data & Backups
+conversations.jsonl
+handoff_latest.*
+backups/
+.snapshots/
+*.bak
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# OS specific
+.DS_Store
+Thumbs.db

@@ -22,7 +22,6 @@ PORT = int(os.environ.get("BRIDGE_PORT", 8765))
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), f".bridge_token_{PORT}.json")
 TOKEN_FALLBACK_FILE = os.path.join(os.path.dirname(__file__), ".bridge_token")
 TOKEN = os.environ.get("BRIDGE_TOKEN") or new_token()
-SCRIPT_PATH = os.path.join(os.path.dirname(__file__), "gemini-cirrus-bridge.user.js")
 
 # จัดเก็บ WebSocket Connection ของ Chrome Tab (Userscript fallback)
 active_ws_clients = set()
@@ -144,7 +143,7 @@ async def ws_handler(request):
                     if msg_type == "CLIENT_HELLO":
                         gem_client_info["gem"] = data.get("gem", "Gemini Web")
                         gem_client_info["url"] = data.get("url", "")
-                        gem_client_info["isOnCirrus"] = data.get("isOnCirrus", False)
+                        gem_client_info["isOnGeminiWeb"] = data.get("isOnGeminiWeb", False)
                         print(f"[Bridge Server] Client Handshake: Gem={gem_client_info.get('gem')}")
 
                     elif msg_type == "ANSWER":
@@ -509,20 +508,6 @@ def _read_userscript_sync(path: str) -> str:
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
-async def handle_userscript(request):
-    """เสิร์ฟไฟล์ Userscript ให้ Tampermonkey กดติดตั้งได้ใน 1 คลิก"""
-    if os.path.isfile(SCRIPT_PATH):
-        content = await asyncio.to_thread(_read_userscript_sync, SCRIPT_PATH)
-        return web.Response(
-            text=content,
-            content_type="text/x-userscript",
-            headers={
-                "Content-Disposition": 'inline; filename="gemini-cirrus-bridge.user.js"',
-                "Cache-Control": "no-cache",
-            },
-        )
-    return web.Response(text="Userscript not found", status=404)
-
 INDEX_HTML = """<!DOCTYPE html>
 <html lang="th">
 <head>
@@ -765,7 +750,6 @@ async def main():
     app.router.add_get("/", handle_index)
     app.router.add_get("/status", handle_status)
     app.router.add_get("/jobs/{job_id}", handle_get_job)
-    app.router.add_get("/gemini-cirrus-bridge.user.js", handle_userscript)
     app.router.add_post("/ask", handle_ask)
     app.router.add_post("/ask_carbon", handle_ask_carbon)
     app.router.add_post("/upload", handle_upload)

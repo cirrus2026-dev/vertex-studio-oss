@@ -32,7 +32,7 @@ def make_security_middleware(
     token: str,
     *,
     ws_origins: Iterable[str] = ("https://gemini.google.com",),
-    public_paths: Iterable[str] = ("/", "/gemini-cirrus-bridge.user.js"),
+    public_paths: Iterable[str] = ("/",),
 ):
     hosts = {f"localhost:{port}", f"127.0.0.1:{port}", f"[::1]:{port}"}
     own_origins = {f"http://{h}" for h in hosts}

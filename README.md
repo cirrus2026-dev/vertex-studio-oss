@@ -147,6 +147,50 @@ Or double-click `run.bat` on Windows and open `http://localhost:5005`.
 
 ---
 
+## 🧩 Extending to Other AI Web Portals (ChatGPT, Claude, AI Pass, etc.)
+
+By default, the Port `8765` Bridge targets **Gemini Web** (`gemini.google.com`) and **Google Cloud Studio**. However, you can extend it to automate **any web-based AI chat interface** in minutes without manually writing selector code—simply instruct your AI Coding Agent (Antigravity / Cursor / Claude Code) to inspect the DOM and wire it up.
+
+<details>
+<summary><b>📖 Click to expand: 3-Step Agent Prompt Guide to Add Any Custom AI Web Tab</b></summary>
+
+### Prerequisites
+1. Open this repository in your AI Coding Agent.
+2. Run `start_ai_bridge.bat` to launch Chrome with CDP enabled (no external DevTools plugin required).
+3. Open your target AI web portal (e.g., `https://chatgpt.com`, `https://claude.ai`, or a custom portal) in that Chrome window and **log in until the chat input is visible**.
+
+---
+
+### Step 1: Inspect the Target Web DOM via CDP
+Copy and send this prompt to your AI Agent:
+
+> **"Use Chrome CDP to inspect the active tab `[TARGET_URL]` and extract the exact CSS selectors for these 4 elements:**
+> 1. **Prompt Input Box** (`textarea` or `div[contenteditable="true"]`)
+> 2. **Send Button**
+> 3. **File Upload Input** (`input[type="file"]` or attachment trigger button)
+> 4. **Latest AI Response Container & Streaming/Stop Indicator** (to detect when generation finishes)"
+
+---
+
+### Step 2: Wire the New Target into the Bridge
+Once the Agent identifies the selectors, send this prompt:
+
+> **"Using the extracted CSS selectors, add a new target portal following the exact architecture of `ask_carbon`:**
+> 1. Add a dispatch & auto-save handler in `chrome_cdp_fixes.py` using `DOM.setFileInputFiles` for attachments and atomic writes (`UUID + fsync`) to `custom_history/latest.md` and `latest.status.json`.
+> 2. Expose a new endpoint `POST /ask_custom` in `gemini_bridge_server.py`.
+> 3. Create a matching CLI dispatcher `dispatch_custom.py` (with Smart `.txt` Bundling) and `SKILL.md` under `skills/`."
+
+---
+
+### Step 3: Verify End-to-End Dispatch
+> **"Restart the Port `8765` Bridge, then run `dispatch_custom.py` with a short test prompt and 1 sample file (create a temporary `.txt` test file specifically for this test, and inform me afterward if that web portal has restrictions on attaching other file extensions). Finally, check `latest.status.json` and summarize `latest.md`."**
+
+> 💡 **Tip:** If your AI provider offers an OpenAI-compatible or Gemini API Key, you can also configure it directly in the **Visual Cockpit Dashboard (`server.py` on port `5005`)** without modifying any browser selectors.
+
+</details>
+
+---
+
 ## 📁 Project Structure
 
 ```text

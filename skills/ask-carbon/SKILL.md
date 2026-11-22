@@ -61,6 +61,11 @@ When user prompts that results are ready or when reviewing completed tasks:
 2. **Summarize Content:** Provide a concise Thai summary (Bottom-Line First).
 3. **Fallback:** If `latest.status.json` is missing or stalled, call `GET http://127.0.0.1:8765/extract_carbon` once to sync the latest output to file.
 
+#### 5. Operational Guardrails (Lessons Learned)
+- **Always use `dispatch_carbon.py` for cross-drive/multi-file sends:** Never POST raw file paths from outside the bridge working directory directly to `/ask_carbon` (it will fail Path Jail). Always use `scripts/dispatch_carbon.py` so it bundles files cleanly.
+- **Never blind-retry HTTP 500:** If `/ask_carbon` returns `HTTP 500`, do NOT retry repeatedly (it will keep switching Chrome tabs). Check `tabUrl` in `/status` or verify the Cloud Studio tab is open.
+- **Bounded Reads for `latest.md`:** Read `latest.md` in chunks (`StartLine=1, EndLine=150`) to stay within `context-mode` read limits.
+
 ---
 
 ## 🎯 Smart Intent-Based Bundling Rules

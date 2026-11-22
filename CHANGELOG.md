@@ -12,6 +12,8 @@
   - เพิ่มการตรวจ `exceptionDetails` ใน `eval_js()` (พร้อม `raise_on_js_error=False` เป็นค่าเริ่มต้น) ไม่ให้ JS Error หายเงียบ
 - **แก้ไขบั๊ก `bundle_project.py` ข้ามไดรฟ์บน Windows:**
   - ครอบ `os.path.commonpath(target_files)` ด้วย `try/except ValueError` เพื่อไม่ให้แครชเมื่อส่งไฟล์จากต่างไดรฟ์ (เช่น `C:\` และ `D:\`) พร้อมกัน
+- **เพิ่มระบบ Background Late-Save Watcher สำหรับงาน Carbon ที่ใช้เวลาเกิน 600 วินาที (`chrome_cdp_fixes.py`):**
+  - เมื่อครบ 600 วินาทีแล้วยังพบ `isGen=True` ท่อจะคืนสถานะ `timeout` ให้ Agent ตามปกติ (ไม่บล็อก) แต่จะเฝ้าต่อเบื้องหลังทุก 15 วินาที (นานสุดอีก 600 วินาที) จนกว่าคาร์บอนจะพิมพ์เสร็จ แล้วเซฟลง `latest.md` + อัปเดต `latest.status.json` เป็น `done` ให้อัตโนมัติ (ยกเลิกตัวเองทันทีหากมีงานใหม่เข้ามา)
 - **เพิ่มระบบอัปเดตและแจ้งเตือนอัตโนมัติ:**
   - เพิ่ม `update.bat` และ `update.ps1` รองรับทั้ง `git pull --ff-only` และดาวน์โหลด ZIP ล่าสุดจาก GitHub โดย **ข้ามไฟล์ส่วนตัว** (`.bridge_token*`, `argon_history/`, `carbon_history/`, `config.json`, `.env`)
   - เพิ่ม `VERSION` และการเช็กเวอร์ชันจาก GitHub แบบ background (timeout 2.5s) ตอนเปิด `gemini_bridge_server.py` เพื่อแจ้งเตือนเมื่อมีอัปเดตใหม่

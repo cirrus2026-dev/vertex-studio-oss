@@ -1443,7 +1443,20 @@ class HardenedChromeClient(ChromeClient):
                 )
                 log.warning("watch carbon timed out (%s): %s", job_id, timeout_msg)
                 await self._mark_job_failed(CARBON_HIST_DIR, job_id, "carbon", "timeout", timeout_msg, t0)
-                return
+                if not st.get("isGen"):
+                    return
+                log.info("Carbon (%s) is still generating after timeout; continuing background late-save watch...", job_id)
+                late_deadline = time.monotonic() + 600.0
+                while time.monotonic() < late_deadline:
+                    await asyncio.sleep(15.0)
+                    try:
+                        st = await self._read_carbon_state(sid, timeout=10.0)
+                    except Exception:
+                        continue
+                    if not st.get("isGen") and int(st.get("lastLen", 0)) > 0:
+                        break
+                else:
+                    return
 
             extracted = await self.eval_js(sid, _CARBON_EXTRACT_JS, timeout=15.0)
             cur_text = ((extracted or {}).get("text") or "").strip()

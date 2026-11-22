@@ -4,6 +4,18 @@
 
 ---
 
+## 🚀 เวอร์ชัน 4.0.1 (23 พฤศจิกายน 2026) - DOM Extraction Fixes & Auto-Updater
+- **แก้ไขบั๊กท่อดูดคำตอบ Gemini Web (`chrome_cdp.py`):**
+  - ข้าม Tag ขยะของ Angular/Google (`sources-carousel-inline`, `source-footnote`, `source-inline-chip`, `response-element`) ใน `walk(node)` ไม่ให้ปนเข้ามาใน `latest.md`
+  - แปลง `<table>` เป็น Markdown Table (`| col1 | col2 |`) ที่สะอาดแทนการดูด `node.outerHTML` ดิบ และรองรับกรณี `<tr>` แรกว่างเปล่า
+  - แยก `<pre>` และ `<code-block>` ภายใน `<li>` ออกจากข้อความบรรทัดเดียว เพื่อรักษาการขึ้นบรรทัดใหม่และการย่อหน้าของโค้ด
+  - เพิ่มการตรวจ `exceptionDetails` ใน `eval_js()` (พร้อม `raise_on_js_error=False` เป็นค่าเริ่มต้น) ไม่ให้ JS Error หายเงียบ
+- **แก้ไขบั๊ก `bundle_project.py` ข้ามไดรฟ์บน Windows:**
+  - ครอบ `os.path.commonpath(target_files)` ด้วย `try/except ValueError` เพื่อไม่ให้แครชเมื่อส่งไฟล์จากต่างไดรฟ์ (เช่น `C:\` และ `D:\`) พร้อมกัน
+- **เพิ่มระบบอัปเดตและแจ้งเตือนอัตโนมัติ:**
+  - เพิ่ม `update.bat` และ `update.ps1` รองรับทั้ง `git pull --ff-only` และดาวน์โหลด ZIP ล่าสุดจาก GitHub โดย **ข้ามไฟล์ส่วนตัว** (`.bridge_token*`, `argon_history/`, `carbon_history/`, `config.json`, `.env`)
+  - เพิ่ม `VERSION` และการเช็กเวอร์ชันจาก GitHub แบบ background (timeout 2.5s) ตอนเปิด `gemini_bridge_server.py` เพื่อแจ้งเตือนเมื่อมีอัปเดตใหม่
+
 ## 🚀 เวอร์ชัน 4.0.0 (22 พฤศจิกายน 2026) - Native MCP Server, Atomic Job Tickets & Headless Task Service
 - **Native MCP Server (`bridge_mcp_server.py`):**
   - เปิดตัว Local Model Context Protocol (MCP) Server ผ่าน `stdio` สำหรับ Antigravity, Cursor และ Claude Desktop

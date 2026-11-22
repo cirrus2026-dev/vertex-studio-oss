@@ -792,7 +792,32 @@ async def main():
         await runner.cleanup()
         _cleanup_bridge_token()
 
+def _check_for_updates_async():
+    """Check GitHub VERSION file in background without blocking server startup."""
+    import threading
+    import urllib.request
+
+    def _worker():
+        try:
+            ver_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION")
+            local_ver = open(ver_file, "r", encoding="utf-8").read().strip() if os.path.exists(ver_file) else "0.0.0"
+            req = urllib.request.Request(
+                "https://raw.githubusercontent.com/cirrus2026-dev/vertex-studio-oss/main/VERSION",
+                headers={"User-Agent": "vertex-studio-oss-updater"},
+            )
+            with urllib.request.urlopen(req, timeout=2.5) as resp:
+                remote_ver = resp.read().decode("utf-8").strip()
+            if remote_ver and remote_ver != local_ver:
+                print(f"\n🔔 [Update Available] Local: v{local_ver} -> GitHub: v{remote_ver}")
+                print("👉 Run update.bat to update automatically (your tokens & history are preserved).\n")
+        except Exception:
+            pass
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
 if __name__ == "__main__":
+    _check_for_updates_async()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

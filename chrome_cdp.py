@@ -118,7 +118,7 @@ class ChromeClient:
             sid = self.sessions.get(target_id)
         return sid
 
-    async def eval_js(self, session_id, expression, timeout=15.0):
+    async def eval_js(self, session_id, expression, timeout=15.0, raise_on_js_error=False):
         res = await self.send_cmd(
             "Runtime.evaluate",
             {"expression": expression, "returnByValue": True, "awaitPromise": True},
@@ -127,7 +127,14 @@ class ChromeClient:
         )
         if "error" in res:
             raise RuntimeError(res["error"].get("message", "CDP Runtime error"))
-        return res.get("result", {}).get("result", {}).get("value")
+        result_obj = res.get("result", {})
+        if "exceptionDetails" in result_obj:
+            exc = result_obj["exceptionDetails"]
+            msg = exc.get("exception", {}).get("description") or exc.get("text", "JS execution error")
+            if raise_on_js_error:
+                raise RuntimeError(f"JS Exception: {msg}")
+            print(f"[ChromeClient] JS Exception (ignored): {msg}")
+        return result_obj.get("result", {}).get("value")
 
     async def find_and_attach_gemini(self):
         if self.gemini_session_id and self.gemini_target_id:
@@ -428,8 +435,8 @@ class ChromeClient:
                     if (node.nodeType !== Node.ELEMENT_NODE) return '';
                     const tag = node.tagName.toLowerCase();
 
-                    // ข้ามปุ่ม Copy, ไอคอน และ SVG
-                    if (tag === 'button' || tag === 'mat-icon' || tag === 'svg') return '';
+                    // ข้ามปุ่ม Copy, ไอคอน, SVG และ Tag ขยะของ Angular/Sources
+                    if (['button', 'mat-icon', 'svg', 'sources-carousel-inline', 'source-footnote', 'source-inline-chip', 'response-element'].includes(tag)) return '';
                     if (node.classList && node.classList.contains('no-md') && !node.querySelector('pre, code-block')) {
                         const chip = node.querySelector('.chip, button, span, code');
                         return chip ? ' `' + chip.textContent.trim() + '` ' : '';
@@ -505,7 +512,7 @@ class ChromeClient:
                         let inlineParts = [];
                         let sublistParts = [];
                         for (const child of node.childNodes) {
-                            if (child.nodeType === Node.ELEMENT_NODE && ['ul', 'ol'].includes(child.tagName.toLowerCase())) {
+                            if (child.nodeType === Node.ELEMENT_NODE && ['ul', 'ol', 'pre', 'code-block'].includes(child.tagName.toLowerCase())) {
                                 sublistParts.push(walk(child, depth));
                             } else {
                                 inlineParts.push(walk(child, depth));
@@ -521,7 +528,21 @@ class ChromeClient:
                     }
 
                     if (tag === 'hr') return '\\n---\\n\\n';
-                    if (tag === 'table') return '\\n\\n' + node.outerHTML + '\\n\\n';
+                    if (tag === 'table') {
+                        const rows = Array.from(node.querySelectorAll('tr'));
+                        if (rows.length === 0) return '';
+                        const mdRows = [];
+                        rows.forEach((tr) => {
+                            const cells = Array.from(tr.querySelectorAll('th, td'));
+                            const cellTexts = cells.map(cell => walk(cell).replace(/\\s+/g, ' ').replace(/\\|/g, '\\\\|').trim());
+                            if (cellTexts.length === 0) return;
+                            mdRows.push('| ' + cellTexts.join(' | ') + ' |');
+                            if (mdRows.length === 1) {
+                                mdRows.push('| ' + cellTexts.map(() => '---').join(' | ') + ' |');
+                            }
+                        });
+                        return mdRows.length > 0 ? '\\n\\n' + mdRows.join('\\n') + '\\n\\n' : '';
+                    }
 
                     return Array.from(node.childNodes).map(c => walk(c, depth, listType, listIndex)).join('');
                 }

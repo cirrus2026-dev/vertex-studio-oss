@@ -184,7 +184,10 @@ def main():
 
     if args.files:
         target_files = [os.path.abspath(f) for f in args.files if os.path.isfile(f) and os.path.abspath(f) != out_file and not is_sensitive(f)]
-        base_dir = os.path.commonpath(target_files) if target_files else os.getcwd()
+        try:
+            base_dir = os.path.commonpath(target_files) if target_files else os.getcwd()
+        except ValueError:
+            base_dir = os.getcwd()
     elif args.dir:
         base_dir = os.path.abspath(args.dir)
         target_files = collect_files(base_dir, out_path=out_file)

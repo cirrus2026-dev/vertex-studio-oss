@@ -32,9 +32,9 @@ server_bg_tasks = set()
 
 # การเชื่อมต่อตรงผ่าน Chrome DevTools Protocol แบบ Hardened Single Connection
 cdp_client = HardenedChromeClient()
-cdp_client.tab_preferences = ["/u/1/app", "your-gemini-chat-id"]
+cdp_client.tab_preferences = ["/notebook/", "/u/1/app", "your-gemini-chat-id"]
 extra_roots = [p.strip() for p in os.environ.get("BRIDGE_EXTRA_UPLOAD_ROOTS", "").split(os.pathsep) if p.strip()]
-cdp_client.upload_roots = build_search_roots(extra_roots)
+cdp_client.upload_roots = build_search_roots(extra_roots=extra_roots)
 cdp_connect_lock = asyncio.Lock()
 cdp_status = {
     "connected": False,

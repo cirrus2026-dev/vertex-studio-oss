@@ -407,8 +407,8 @@ class HardenedChromeClient(ChromeClient):
         self.carbon_lock = asyncio.Lock()
 
         # จัดการ Watcher และ Background Tasks ไม่ให้ซ้อนทับหรือหลุด GC
-        self._argon_watcher_task: Optional[asyncio.Task] = None
-        self._carbon_watcher_task: Optional[asyncio.Task] = None
+        self._argon_watchers: Dict[str, asyncio.Task] = {}
+        self._carbon_watchers: Dict[str, asyncio.Task] = {}
         self._bg_tasks: Set[asyncio.Task] = set()
 
         # In-Memory Job Registry สำหรับ GET /jobs/{job_id}?wait=...
@@ -570,10 +570,10 @@ class HardenedChromeClient(ChromeClient):
         self.listen_task = asyncio.create_task(self._listener(ws))
 
     async def close(self):
-        await self._cancel_task_safely(self._argon_watcher_task)
-        await self._cancel_task_safely(self._carbon_watcher_task)
-        self._argon_watcher_task = None
-        self._carbon_watcher_task = None
+        for t in list(self._argon_watchers.values()) + list(self._carbon_watchers.values()):
+            await self._cancel_task_safely(t)
+        self._argon_watchers.clear()
+        self._carbon_watchers.clear()
 
         for jid, info in list(self._jobs.items()):
             if info.get("state") == "generating":
@@ -971,8 +971,9 @@ class HardenedChromeClient(ChromeClient):
             # 0) ไม่เริ่มส่งทับคำตอบที่กำลังเจนอยู่ และรอให้ Watcher งานเก่าดูดคำตอบเซฟลงดิสก์ให้เสร็จก่อน
             if (await self.read_state(sid))["isGenerating"] and not await self._wait_idle(sid, 60.0):
                 return {"ok": False, "error": "Gemini ยังสร้างคำตอบก่อนหน้าไม่เสร็จ (ปุ่ม Stop ค้างเกิน 60 วินาที)"}
-            if self._argon_watcher_task and not self._argon_watcher_task.done():
-                await asyncio.wait([self._argon_watcher_task], timeout=5.0)
+            prev_watcher = self._argon_watchers.get(tid)
+            if prev_watcher and not prev_watcher.done():
+                await asyncio.wait([prev_watcher], timeout=5.0)
 
             sel_info: Dict[str, Any] = {}
             if web_model or thinking_level:
@@ -1023,9 +1024,8 @@ class HardenedChromeClient(ChromeClient):
                     ),
                 }
 
-            # ยกเลิก Watcher เก่าของแท็บนี้ก่อนเริ่มงานใหม่เสมอ (ป้องกัน Watcher ซ้อนกัน)
-            await self._cancel_task_safely(self._argon_watcher_task)
-            self._argon_watcher_task = None
+            # ยกเลิก Watcher เก่าของแท็บนี้ก่อนเริ่มงานใหม่เสมอ (ป้องกัน Watcher ซ้อนกันในแท็บเดียวกัน)
+            await self._cancel_task_safely(self._argon_watchers.pop(tid, None))
 
             job_id = f"argon_{time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:4]}"
             self._register_job(job_id, "argon", ARGON_HIST_DIR, prompt_text)
@@ -1046,7 +1046,7 @@ class HardenedChromeClient(ChromeClient):
                         )
                     )
                 )
-                self._argon_watcher_task = watcher
+                self._argon_watchers[tid] = watcher
                 return {
                     "ok": True,
                     "dispatched": True,
@@ -1412,9 +1412,8 @@ class HardenedChromeClient(ChromeClient):
             if send_res == "NOT_FOUND":
                 return {"ok": False, "error": "ไม่พบปุ่ม Run/Send หรือช่องพิมพ์บนหน้า Google Cloud Studio"}
 
-            # 4. ยกเลิก Carbon Watcher เก่าก่อน แล้วขึ้นป้ายไฟแดงและเริ่ม Watcher ใหม่
-            await self._cancel_task_safely(self._carbon_watcher_task)
-            self._carbon_watcher_task = None
+            # 4. ยกเลิก Carbon Watcher เก่าของแท็บนี้ก่อน แล้วขึ้นป้ายไฟแดงและเริ่ม Watcher ใหม่
+            await self._cancel_task_safely(self._carbon_watchers.pop(tid, None))
 
             job_id = f"carbon_{time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:4]}"
             self._register_job(job_id, "carbon", CARBON_HIST_DIR, prompt_text)
@@ -1425,7 +1424,7 @@ class HardenedChromeClient(ChromeClient):
                     self._watch_and_save_carbon(sid, before, t0, timeout, job_id=job_id)
                 )
             )
-            self._carbon_watcher_task = watcher
+            self._carbon_watchers[tid] = watcher
 
             return {
                 "ok": True,

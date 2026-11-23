@@ -235,11 +235,15 @@ Released under the **MIT License** — free to use, modify, and distribute.
 
 ---
 
-## 🤝 Using with Multi-Agent Swarms
+## 🤝 Using with Multi-Agent Swarms (Experimental / Lab)
 
-Yes, **Vertex Studio OSS works with multi-agent Swarms** (verified with parallel Argon + Carbon execution, and now supports **Multi-Tab Swarm Routing** & **Draft Mode** in v4.1.0):
+> [!NOTE]
+> **Experimental Lab Feature:** Multi-Tab Swarm Routing & Draft Mode (v4.1.0) are provided as an experimental foundation for you to build and customize your own multi-agent workflows.
 
-1. **Multi-Tab Routing (`GET /tabs` + `target_id` / `tab_url`):** Call `GET /tabs` to list all open Gemini (`argon`) and Cloud Studio (`carbon`) tabs with their `target_id` and `url`. Pass `target_id` (or `tab_url`) in `POST /ask` or `POST /ask_carbon` so multiple Swarm workers can target different tabs of the same model without colliding.
+**Vertex Studio OSS works with multi-agent Swarms** (verified with parallel Argon + Carbon and 4-tab concurrent Argon execution):
+
+1. **Multi-Tab Routing (`GET /tabs` + `target_id` / `tab_url`):** Call `GET /tabs` (with `X-Bridge-Token` and `Origin: http://127.0.0.1:8765`) to list open Gemini (`argon`) and Cloud Studio (`carbon`) tabs with their `target_id` and `url`. Pass `target_id` (or `tab_url`) in `POST /ask` or `POST /ask_carbon` so multiple Swarm workers can target different tabs of the same model without colliding.
 2. **Draft Mode (`draft_only: true` or `auto_send: false`):** Pass `draft_only: true` (or `auto_send: false`) in `POST /ask` or `POST /ask_carbon` to attach files and type the prompt without clicking Send.
-3. **Track by `jobId`, Not `latest.md`:** `latest.md` and `latest.status.json` are overwritten by the newest job. Swarm workers must poll their own `jobId` via `check_job(job_id)` or `GET /jobs/{job_id}?wait=30&includeAnswer=1`.
-4. **Use MCP or `dispatch.py`:** Direct HTTP calls without `X-Bridge-Token`, `Host`, and `Origin: http://127.0.0.1:8765` will be rejected with `403 Forbidden`.
+3. **Track by `jobId`, Not `latest.md`:** `latest.md` and `latest.status.json` are overwritten by the newest job. Use `fireAndForget: true` and poll each worker's own `jobId` via `check_job(job_id)` or `GET /jobs/{job_id}?wait=30&includeAnswer=1` (per-`target_id` background watchers track each tab independently).
+4. **Quota-Saving Pattern:** Omit `webModel` and `thinkingLevel` in `POST /ask` to preserve the model/thinking level already selected in each browser tab, while running Swarm workers on a lightweight model (e.g. Flash Low).
+5. **Use MCP or `dispatch.py`:** Direct HTTP calls without `X-Bridge-Token`, `Host`, and `Origin: http://127.0.0.1:8765` will be rejected with `403 Forbidden`.

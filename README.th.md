@@ -241,3 +241,16 @@ vertex-studio-oss/
 2. **เปิดไว้แค่ 1 แท็บต่อ 1 โมเดล:** หากเปิด Cloud Studio หรือ Gemini ไว้หลายแท็บใน Chrome ตัว CDP อาจจับแท็บแรกที่เจอและส่งผิดแท็บได้
 3. **ติดตามผลจาก `jobId` ห้ามอ่าน `latest.md` ตรงๆ:** เพราะ `latest.md` / `latest.status.json` จะถูกเขียนทับโดยงานล่าสุดเสมอ Worker ใน Swarm ต้องเช็กผลจาก `jobId` ของตัวเองเท่านั้น (`check_job(job_id)` หรือ `GET /jobs/{job_id}?wait=30&includeAnswer=1`)
 4. **เรียกผ่าน MCP หรือ `dispatch.py`:** หากยิง HTTP ตรงๆ โดยไม่ใส่ `X-Bridge-Token`, `Host` และ `Origin: http://127.0.0.1:8765` จะติด `403 Forbidden`
+
+
+---
+
+## 🤝 การใช้งานร่วมกับ Multi-Agent Swarms (Experimental / Lab)
+
+> [!NOTE]
+> **ฟีเจอร์ทดลอง (Experimental Lab):** ระบบ Multi-Tab Swarm Routing และ Draft Mode (v4.1.0) เปิดให้เป็นโครงสร้างทดลองสำหรับนำไปต่อยอดและบิ้ว workflow ของคุณเอง
+
+1. **Multi-Tab Routing (`GET /tabs` + `target_id` / `tab_url`):** เรียก `GET /tabs` (แนบ `X-Bridge-Token` และ `Origin: http://127.0.0.1:8765`) เพื่อดูรายการแท็บที่เปิดอยู่พร้อม `target_id` แล้วส่ง `target_id` (หรือ `tab_url`) เข้า `POST /ask` หรือ `POST /ask_carbon`
+2. **Draft Mode (`draft_only: true` หรือ `auto_send: false`):** วางไฟล์และพิมพ์พรอมต์ลงช่องข้อความโดยไม่กดส่ง
+3. **ติดตามผลด้วย `jobId`:** ส่งแบบ `fireAndForget: true` แล้วรอผลจาก `GET /jobs/{job_id}?wait=30&includeAnswer=1` (Background Watcher แยกตาม `target_id` ให้แล้ว)
+4. **ประหยัดโควต้า:** ไม่ต้องส่ง `webModel` / `thinkingLevel` เพื่อคงระดับความคิดที่ตั้งไว้บนหน้าเว็บ แล้วให้ Swarm workers ใช้โมเดลเบา (เช่น Flash Low) ส่งงานและดึงคำตอบมารายงาน

@@ -127,3 +127,15 @@ python "~/.gemini/config/skills/ask-carbon/scripts/dispatch_carbon.py" --prompt 
 - **1 tab per model:** Keep only 1 Cloud Studio tab open in Chrome (port 9222) so CDP does not attach to an unintended tab.
 - **NEVER read `latest.md` directly in a Swarm:** `latest.md` and `latest.status.json` are overwritten by newer jobs. Each Swarm worker MUST poll its own `jobId` via `check_job(job_id)` or `GET http://127.0.0.1:8765/jobs/{job_id}?wait=30&includeAnswer=1`.
 - **Always use MCP (`ask_carbon`) or `dispatch.py --target carbon`:** Direct HTTP calls without `X-Bridge-Token`, `Host: 127.0.0.1:8765`, and `Origin: http://127.0.0.1:8765` will fail with `403 Forbidden`.
+
+
+---
+
+## 🧪 Multi-Tab Swarm & Draft Mode (Experimental / Lab)
+
+> **Experimental Lab Feature:** Provided for multi-tab Swarm experimentation and custom workflow building.
+
+- **List Open Tabs:** `GET http://127.0.0.1:8765/tabs` (with `X-Bridge-Token` and `Origin: http://127.0.0.1:8765`) returns open `argon` and `carbon` tabs with `target_id` and `url`.
+- **Target Specific Tab:** Pass `"target_id": "<id>"` (or `"tab_url": "<substring>"`) in `POST /ask_carbon` to route concurrent Swarm workers to separate tabs without colliding.
+- **Draft Mode:** Pass `"draft_only": true` (or `"auto_send": false`) to attach files and type the prompt without clicking Run/Send.
+- **Swarm Job Polling:** Poll `GET /jobs/{jobId}?wait=30&includeAnswer=1` per worker to retrieve each tab's answer independently.

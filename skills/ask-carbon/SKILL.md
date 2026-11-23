@@ -122,20 +122,7 @@ python "~/.gemini/config/skills/ask-carbon/scripts/dispatch_carbon.py" --prompt 
 1. Chrome must be open with remote debugging enabled on port 9222.
 2. The Google Cloud Studio tab with `gemini-4-carbon` must be open in Chrome.
 
-#### 6. Multi-Agent / Swarm Rules (IDE Agents Must Follow)
-- **Cross-model parallelism only:** `ask_carbon` (Cloud Studio tab) and `ask_argon` (Gemini Web tab) run in parallel on separate tabs/locks. Multiple workers targeting `ask_carbon` at the same time will queue sequentially.
-- **1 tab per model:** Keep only 1 Cloud Studio tab open in Chrome (port 9222) so CDP does not attach to an unintended tab.
-- **NEVER read `latest.md` directly in a Swarm:** `latest.md` and `latest.status.json` are overwritten by newer jobs. Each Swarm worker MUST poll its own `jobId` via `check_job(job_id)` or `GET http://127.0.0.1:8765/jobs/{job_id}?wait=30&includeAnswer=1`.
-- **Always use MCP (`ask_carbon`) or `dispatch.py --target carbon`:** Direct HTTP calls without `X-Bridge-Token`, `Host: 127.0.0.1:8765`, and `Origin: http://127.0.0.1:8765` will fail with `403 Forbidden`.
-
-
----
-
-## 🧪 Multi-Tab Swarm & Draft Mode (Experimental / Lab)
-
-> **Experimental Lab Feature:** Provided for multi-tab Swarm experimentation and custom workflow building.
-
-- **List Open Tabs:** `GET http://127.0.0.1:8765/tabs` (with `X-Bridge-Token` and `Origin: http://127.0.0.1:8765`) returns open `argon` and `carbon` tabs with `target_id` and `url`.
-- **Target Specific Tab:** Pass `"target_id": "<id>"` (or `"tab_url": "<substring>"`) in `POST /ask_carbon` to route concurrent Swarm workers to separate tabs without colliding.
-- **Draft Mode:** Pass `"draft_only": true` (or `"auto_send": false`) to attach files and type the prompt without clicking Run/Send.
-- **Swarm Job Polling:** Poll `GET /jobs/{jobId}?wait=30&includeAnswer=1` per worker to retrieve each tab's answer independently.
+#### 6. Multi-Agent / Swarm Rules (Experimental / Lab)
+- **Poll by `jobId` (Never `latest.md`):** Always poll `check_job(job_id)` or `GET /jobs/{job_id}?wait=30&includeAnswer=1`.
+- **Auth Headers:** Direct HTTP calls require `X-Bridge-Token`, `Host: 127.0.0.1:8765`, and `Origin: http://127.0.0.1:8765` (otherwise `403 Forbidden`).
+- **Multi-Tab Routing & Draft Mode:** Use `GET /tabs` to get `target_id`, pass `"target_id"` (or `"tab_url"`) and optional `"draft_only": true` in `POST /ask_carbon`.

@@ -122,20 +122,7 @@ python "~/.gemini/config/skills/ask-argon/scripts/dispatch.py" --prompt "Prompt 
 1. Chrome running with remote debugging on port 9222.
 2. Persistent Bridge running on `http://127.0.0.1:8765` (`gemini_bridge_server.py`).
 
-#### 6. Multi-Agent / Swarm Rules (IDE Agents Must Follow)
-- **Cross-model parallelism only:** `ask_argon` (Gemini Web tab) and `ask_carbon` (Cloud Studio tab) run in parallel on separate tabs/locks. Multiple workers targeting `ask_argon` at the same time will queue sequentially.
-- **1 tab per model:** Keep only 1 Gemini Web tab open in Chrome (port 9222) so CDP does not attach to an unintended tab.
-- **NEVER read `latest.md` directly in a Swarm:** `latest.md` and `latest.status.json` are overwritten by newer jobs. Each Swarm worker MUST poll its own `jobId` via `check_job(job_id)` or `GET http://127.0.0.1:8765/jobs/{job_id}?wait=30&includeAnswer=1`.
-- **Always use MCP (`ask_argon`) or `dispatch.py`:** Direct HTTP calls without `X-Bridge-Token`, `Host: 127.0.0.1:8765`, and `Origin: http://127.0.0.1:8765` will fail with `403 Forbidden`.
-
-
----
-
-## 🧪 Multi-Tab Swarm & Draft Mode (Experimental / Lab)
-
-> **Experimental Lab Feature:** Provided for multi-tab Swarm experimentation and custom workflow building.
-
-- **List Open Tabs:** `GET http://127.0.0.1:8765/tabs` (with `X-Bridge-Token` and `Origin: http://127.0.0.1:8765`) returns open `argon` and `carbon` tabs with `target_id` and `url`.
-- **Target Specific Tab:** Pass `"target_id": "<id>"` (or `"tab_url": "<substring>"`) in `POST /ask` to route concurrent Swarm workers to separate tabs without colliding.
-- **Draft Mode:** Pass `"draft_only": true` (or `"auto_send": false`) to attach files and type the prompt without clicking Send.
-- **Swarm Job Polling:** Use `"fireAndForget": true` and poll `GET /jobs/{jobId}?wait=30&includeAnswer=1` per worker. Omit `webModel`/`thinkingLevel` to keep the tab's pre-selected thinking level.
+#### 6. Multi-Agent / Swarm Rules (Experimental / Lab)
+- **Poll by `jobId` (Never `latest.md`):** Always poll `check_job(job_id)` or `GET /jobs/{job_id}?wait=30&includeAnswer=1`.
+- **Auth Headers:** Direct HTTP calls require `X-Bridge-Token`, `Host: 127.0.0.1:8765`, and `Origin: http://127.0.0.1:8765` (otherwise `403 Forbidden`).
+- **Multi-Tab Routing & Draft Mode:** Use `GET /tabs` to get `target_id`, pass `"target_id"` (or `"tab_url"`) and optional `"draft_only": true` / `"fireAndForget": true` in `POST /ask`. Omit `webModel`/`thinkingLevel` to keep the tab's pre-selected thinking level.

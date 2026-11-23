@@ -1,27 +1,50 @@
 import json
 import urllib.request
+import urllib.error
 import os
 import sys
 import argparse
 import tempfile
 import re
 import ast
+import time
+import glob
+import socket
+import unicodedata
+import uuid
 
-def get_bridge_token():
-    env_tok = os.environ.get("BRIDGE_TOKEN")
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+_NO_PROXY_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+def get_bridge_token(bridge_port="8765"):
+    env_tok = os.environ.get("BRIDGE_TOKEN", "").strip()
     if env_tok:
         return env_tok
+    script_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    vd_dir = os.path.join(os.path.expanduser("~"), ".gemini", "vertex-dashboard")
     candidates = [
-        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".bridge_token_8765.json"),
-        os.path.join(os.path.expanduser("~"), ".gemini", "vertex-dashboard", ".bridge_token_8765.json"),
-        os.path.join(os.getcwd(), ".bridge_token_8765.json"),
+        os.path.join(script_root, f".bridge_token_{bridge_port}.json"),
+        os.path.join(script_root, ".bridge_token"),
+        os.path.join(vd_dir, f".bridge_token_{bridge_port}.json"),
+        os.path.join(vd_dir, ".bridge_token"),
+        os.path.join(os.getcwd(), f".bridge_token_{bridge_port}.json"),
     ]
     for p in candidates:
         if os.path.isfile(p):
             try:
                 with open(p, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    tok = data.get("token", "")
+                if isinstance(data, dict):
+                    file_port = data.get("port")
+                    if file_port is not None and str(file_port) != str(bridge_port):
+                        continue
+                    tok = str(data.get("token", "")).strip()
                     if tok:
                         return tok
             except Exception:
@@ -83,7 +106,9 @@ def detect_intent(prompt):
         return "diff"
     return "audit"
 
-def bundle_files_to_txt(files, prompt="", mode="auto", bundle_name="argon_project_bundle.txt"):
+def bundle_files_to_txt(files, prompt="", mode="auto", bundle_name=None):
+    if not bundle_name:
+        bundle_name = f"argon_project_bundle_{uuid.uuid4().hex[:8]}.txt"
     if mode == "auto":
         mode = detect_intent(prompt)
         print(f"🎯 Auto-Detected Task Intent: [{mode.upper()} MODE]")
@@ -91,6 +116,13 @@ def bundle_files_to_txt(files, prompt="", mode="auto", bundle_name="argon_projec
     temp_dir = os.path.join(tempfile.gettempdir(), "argon_bundles")
 
     os.makedirs(temp_dir, exist_ok=True)
+    now = time.time()
+    for old_f in glob.glob(os.path.join(temp_dir, "argon_project_bundle_*.txt")):
+        try:
+            if now - os.path.getmtime(old_f) > 7200:
+                os.remove(old_f)
+        except Exception:
+            pass
     bundle_path = os.path.join(temp_dir, bundle_name)
 
     total_chars = 0
@@ -117,15 +149,20 @@ def bundle_files_to_txt(files, prompt="", mode="auto", bundle_name="argon_projec
     print(f"📦 Auto-Bundled {len(files)} files into: {bundle_path} ({total_chars} chars, mode: {mode})")
     return bundle_path
 
-def dispatch(prompt, files=None, thinking_level="HIGH", out_file=None, session_id="argon_skill_task", bundle_mode=True, mode="auto"):
+def dispatch(prompt, files=None, thinking_level="HIGH", out_file=None, session_id="argon_skill_task", bundle_mode=True, mode="auto", target="argon"):
     resolved_files = []
     if files:
         for f in files:
             f_abs = os.path.abspath(f)
+            if not os.path.isfile(f_abs):
+                f_nfc = os.path.abspath(unicodedata.normalize("NFC", f))
+                if os.path.isfile(f_nfc):
+                    f_abs = f_nfc
             if os.path.isfile(f_abs):
                 resolved_files.append(f_abs)
             else:
-                print(f"⚠️ ไม่พบไฟล์แนบ: {f}", file=sys.stderr)
+                print(f"❌ ไม่พบไฟล์แนบ: {f} (ยกเลิกการส่งเพื่อป้องกันการส่ง Prompt เปล่า)", file=sys.stderr)
+                return False
 
     final_files = []
     if resolved_files:
@@ -150,7 +187,8 @@ def dispatch(prompt, files=None, thinking_level="HIGH", out_file=None, session_i
         final_prompt = prompt + CODE_FORMAT_GUARDRAIL
 
     # ยิงผ่าน Persistent Bridge พอร์ต 8765 ที่เปิดท่อค้างไว้อยู่แล้ว (ไม่เด้งถามสิทธิ์ Chrome ซ้ำ 100%)
-    token = get_bridge_token()
+    bridge_port = os.environ.get("BRIDGE_PORT", "8765").strip() or "8765"
+    token = get_bridge_token(bridge_port)
     bridge_payload = {
         "prompt": final_prompt,
         "files": final_files,
@@ -158,30 +196,51 @@ def dispatch(prompt, files=None, thinking_level="HIGH", out_file=None, session_i
     }
     bridge_headers = {
         "Content-Type": "application/json; charset=utf-8",
-        "Host": "127.0.0.1:8765",
-        "Origin": "http://127.0.0.1:8765"
+        "Host": f"127.0.0.1:{bridge_port}",
+        "Origin": f"http://127.0.0.1:{bridge_port}"
     }
     if token:
         bridge_headers["X-Bridge-Token"] = token
 
-    print(f"🚀 กำลังส่งคำสั่งและไฟล์ผ่านท่อ Persistent Bridge พอร์ต 8765 ที่เปิดค้างไว้...")
+    endpoint = f"http://127.0.0.1:{bridge_port}/ask_carbon" if target == "carbon" else f"http://127.0.0.1:{bridge_port}/ask"
+    print(f"🚀 กำลังส่งคำสั่งและไฟล์ผ่านท่อ Persistent Bridge พอร์ต {bridge_port} ({target})...")
     try:
         req = urllib.request.Request(
-            "http://127.0.0.1:8765/ask",
+            endpoint,
             data=json.dumps(bridge_payload, ensure_ascii=False).encode("utf-8"),
             headers=bridge_headers,
             method="POST"
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with _NO_PROXY_OPENER.open(req, timeout=30) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             if data.get("ok"):
-                print("⚡ ส่งงานผ่านท่อสะพานสำเร็จเรียบร้อยแล้ว! (ไม่เด้งถามสิทธิ์ซ้ำ)")
+                jid = data.get("jobId")
+                suffix = f" (jobId: {jid})" if jid else ""
+                print(f"⚡ ส่งงานผ่านท่อสะพานสำเร็จเรียบร้อยแล้ว!{suffix} (ไม่เด้งถามสิทธิ์ซ้ำ)")
                 return True
             else:
                 print(f"⚠️ Bridge รายงานข้อผิดพลาด: {data.get('error')}", file=sys.stderr)
                 return False
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+            err_msg = json.loads(body).get("error") or body
+        except Exception:
+            err_msg = body or str(e)
+        print(f"❌ Bridge ตอบกลับ HTTP {e.code}: {err_msg}", file=sys.stderr)
+        return False
+    except (TimeoutError, socket.timeout):
+        print(f"⏳ ส่งคำสั่งเข้าท่อ {target} แล้ว (รอคำตอบเกิน 30s) — ให้รอผลจาก Background Watcher หรือดึงผ่าน /extract_{'carbon' if target == 'carbon' else 'markdown'} แทน")
+        return True
+    except urllib.error.URLError as e:
+        if isinstance(getattr(e, "reason", None), (TimeoutError, socket.timeout)):
+            print(f"⏳ ส่งคำสั่งเข้าท่อ {target} แล้ว (รอคำตอบเกิน 30s) — ให้รอผลจาก Background Watcher หรือดึงผ่าน /extract_{'carbon' if target == 'carbon' else 'markdown'} แทน")
+            return True
+        print(f"❌ ไม่สามารถเชื่อมต่อท่อสะพาน {bridge_port}: {e}", file=sys.stderr)
+        return False
     except Exception as e:
-        print(f"❌ ไม่สามารถเชื่อมต่อท่อสะพาน 8765: {e}", file=sys.stderr)
+        print(f"❌ ไม่สามารถเชื่อมต่อท่อสะพาน {bridge_port}: {e}", file=sys.stderr)
         return False
 
 def main():
@@ -194,6 +253,7 @@ def main():
     parser.add_argument("--out", "-o", default=None, help="ไฟล์ปลายทางสำหรับบันทึกคำตอบ")
     parser.add_argument("--session", "-s", default="argon_skill_task", help="Session ID")
     parser.add_argument("--mode", "-m", choices=["auto", "audit", "feature", "diff"], default="auto", help="โหมดการสกัดโค้ด")
+    parser.add_argument("--target", choices=["argon", "carbon"], default="argon", help="ปลายทาง (argon หรือ carbon)")
 
     args = parser.parse_args()
 
@@ -224,7 +284,8 @@ def main():
         out_file=args.out,
         session_id=args.session,
         bundle_mode=args.bundle,
-        mode=args.mode
+        mode=args.mode,
+        target=args.target
     )
     if not success:
         sys.exit(1)

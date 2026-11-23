@@ -65,6 +65,7 @@ When user prompts that results are ready or when reviewing completed tasks:
 - **Always use `dispatch_carbon.py` for cross-drive/multi-file sends:** Never POST raw file paths from outside the bridge working directory directly to `/ask_carbon` (it will fail Path Jail). Always use `scripts/dispatch_carbon.py` so it bundles files cleanly.
 - **Never blind-retry HTTP 500:** If `/ask_carbon` returns `HTTP 500`, do NOT retry repeatedly (it will keep switching Chrome tabs). Check `tabUrl` in `/status` or verify the Cloud Studio tab is open.
 - **Bounded Reads for `latest.md`:** Read `latest.md` in chunks (`StartLine=1, EndLine=150`) to stay within `context-mode` read limits.
+- **Auto-reconnect on HTTP 503 (CDP Not Connected):** If `/ask_carbon` or `/extract_carbon` returns `HTTP 503`, immediately trigger **1** reconnect request via MCP `bridge_status(reconnect=true)` or `POST http://127.0.0.1:8765/connect-cdp` (with `X-Bridge-Token` from `.bridge_token_8765.json`, `Host: 127.0.0.1:8765`, `Origin: http://127.0.0.1:8765`), then ask the user to click **Allow** on the Chrome popup within 60 seconds before retrying.
 
 ---
 

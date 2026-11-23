@@ -62,6 +62,7 @@ When user prompts that results are ready or when reviewing completed tasks:
 - **Always use `dispatch.py` for cross-drive/multi-file sends:** Never POST raw file paths from outside the bridge working directory directly to `/ask` (it will fail Path Jail). Always use `scripts/dispatch.py` so it bundles files cleanly.
 - **Never blind-retry HTTP 500:** If `/ask` returns `HTTP 500`, do NOT retry repeatedly (it will keep switching Chrome tabs). Check `tabUrl` in `/status` (e.g. `/notebook/` vs `/app`), or if `input[type='file']` is missing, ask the user to click `+` once on Gemini Web.
 - **Bounded Reads for `latest.md`:** Read `latest.md` in chunks (`StartLine=1, EndLine=150`) to stay within `context-mode` read limits.
+- **Auto-reconnect on HTTP 503 (CDP Not Connected):** If `dispatch.py` or `/ask` returns `HTTP 503`, immediately trigger **1** reconnect request via MCP `bridge_status(reconnect=true)` or `POST http://127.0.0.1:8765/connect-cdp` (with `X-Bridge-Token` from `.bridge_token_8765.json`, `Host: 127.0.0.1:8765`, `Origin: http://127.0.0.1:8765`), then ask the user to click **Allow** on the Chrome popup within 60 seconds before retrying.
 
 ---
 

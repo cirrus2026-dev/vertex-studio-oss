@@ -436,7 +436,8 @@ class ChromeClient:
                     const tag = node.tagName.toLowerCase();
 
                     // ข้ามปุ่ม Copy, ไอคอน, SVG และ Tag ขยะของ Angular/Sources
-                    if (['button', 'mat-icon', 'svg', 'sources-carousel-inline', 'source-footnote', 'source-inline-chip', 'response-element'].includes(tag)) return '';
+                    if (['button', 'mat-icon', 'svg', 'sources-carousel-inline', 'source-footnote', 'source-inline-chip'].includes(tag)) return '';
+                    if (tag === 'response-element' && !node.querySelector('pre, code-block, table, p, ul, ol')) return '';
                     if (node.classList && node.classList.contains('no-md') && !node.querySelector('pre, code-block')) {
                         const chip = node.querySelector('.chip, button, span, code');
                         return chip ? ' `' + chip.textContent.trim() + '` ' : '';
@@ -446,7 +447,7 @@ class ChromeClient:
                         const code = node.querySelector('code');
                         const pre = node.querySelector('pre') || (tag === 'pre' ? node : null);
                         let lang = '';
-                        const langEl = node.querySelector('.header-text, .code-block-decoration-header, .language-header, [class*="language-"]');
+                        const langEl = node.querySelector('.header-text, .code-block-decoration-header, .language-header, [class*="language-"]:not(code):not(pre)');
                         if (langEl) {
                             lang = langEl.textContent.trim().toLowerCase();
                         } else if (code) {

@@ -39,10 +39,11 @@ def _log(msg: str) -> None:
     sys.stderr.write(f"[bridge_mcp_server] {msg}\n")
     sys.stderr.flush()
 
-def _load_bridge_token() -> str:
-    env_tok = os.environ.get("BRIDGE_TOKEN", "").strip()
-    if env_tok:
-        return env_tok
+def _load_bridge_token(prefer_file: bool = False) -> str:
+    if not prefer_file:
+        env_tok = os.environ.get("BRIDGE_TOKEN", "").strip()
+        if env_tok:
+            return env_tok
 
     candidates = [
         os.path.join(SCRIPT_DIR, f".bridge_token_{BRIDGE_PORT}.json"),
@@ -68,6 +69,11 @@ def _load_bridge_token() -> str:
             continue
     return ""
 
+_NO_PROXY_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+_LAST_CONNECT_CDP_TS: Optional[float] = None
+_CONNECT_CDP_COOLDOWN_SEC = 65.0
+
+
 def _bridge_request(
     method: str,
     path: str,
@@ -75,11 +81,12 @@ def _bridge_request(
     timeout: float = 150.0,
 ) -> Tuple[int, Dict[str, Any]]:
     """ส่ง HTTP Request ไปยัง 127.0.0.1:8765 พร้อม Auto-Retry 1 ครั้งหาก Token เปลี่ยน (401/403)"""
+    import socket
     url = f"{BRIDGE_BASE_URL}{path}"
     body_bytes = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
 
     for attempt in range(2):
-        token = _load_bridge_token()
+        token = _load_bridge_token(prefer_file=(attempt > 0))
         headers = {
             "Host": f"{BRIDGE_HOST}:{BRIDGE_PORT}",
             "Origin": BRIDGE_BASE_URL,
@@ -91,7 +98,7 @@ def _bridge_request(
 
         req = urllib.request.Request(url, data=body_bytes, headers=headers, method=method)
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with _NO_PROXY_OPENER.open(req, timeout=timeout) as resp:
                 raw = resp.read().decode("utf-8", errors="replace")
                 return resp.status, json.loads(raw) if raw.strip() else {"ok": True}
         except urllib.error.HTTPError as e:
@@ -106,7 +113,11 @@ def _bridge_request(
             except Exception:
                 err_data = {"ok": False, "error": err_raw or f"HTTP {e.code}"}
             return e.code, err_data
+        except (TimeoutError, socket.timeout) as e:
+            return 0, {"ok": False, "timeout": True, "error": f"Bridge request timed out ({timeout}s): {e}"}
         except urllib.error.URLError as e:
+            if isinstance(getattr(e, "reason", None), (TimeoutError, socket.timeout)):
+                return 0, {"ok": False, "timeout": True, "error": f"Bridge request timed out ({timeout}s): {e.reason}"}
             return 0, {
                 "ok": False,
                 "error": f"ไม่สามารถเชื่อมต่อ Bridge ({BRIDGE_BASE_URL}) ได้: {e.reason} (ตรวจสอบว่า gemini_bridge_server.py กำลังรันอยู่)",
@@ -138,6 +149,11 @@ def _wait_for_job_result(
             timeout=slice_wait + 15.0,
         )
         last_status, last_data = code, data
+        if code == 0 and data.get("timeout"):
+            if time.monotonic() >= deadline:
+                return code, {"ok": True, "jobId": job_id, "state": "generating"}
+            time.sleep(0.5)
+            continue
         if code != 200 or not data.get("ok"):
             return code, data
         state = data.get("state")
@@ -150,18 +166,64 @@ def _wait_for_job_result(
         if (now - req_t0) < 0.5:
             time.sleep(min(1.0, max(0.05, deadline - now)))
 
-def _normalize_files(raw_files: Any) -> List[str]:
+def _normalize_files(raw_files: Any) -> Tuple[List[str], List[str]]:
+    import unicodedata
     if not raw_files:
-        return []
-    if isinstance(raw_files, str):
-        return [os.path.abspath(raw_files.strip())] if raw_files.strip() else []
-    if isinstance(raw_files, list):
-        out = []
-        for item in raw_files:
-            if isinstance(item, str) and item.strip():
-                out.append(os.path.abspath(item.strip()))
-        return out
-    return []
+        return [], []
+    items = [raw_files] if isinstance(raw_files, str) else (raw_files if isinstance(raw_files, list) else [])
+    valid_files: List[str] = []
+    missing_files: List[str] = []
+    for item in items:
+        if isinstance(item, str) and item.strip():
+            cleaned = unicodedata.normalize("NFC", item.strip(" \t\r\n\"'"))
+            if cleaned:
+                abs_p = os.path.abspath(cleaned)
+                if os.path.isfile(abs_p):
+                    valid_files.append(abs_p)
+                else:
+                    missing_files.append(abs_p)
+    return valid_files, missing_files
+
+
+def _handle_cdp_503(data: Dict[str, Any]) -> str:
+    """Self-healing 503 handler with strict 65s monotonic cooldown and non-retry instruction."""
+    global _LAST_CONNECT_CDP_TS
+    err_text = str(data.get("error") or "")
+    low_err = err_text.lower()
+
+    if "websocket" in low_err:
+        return json.dumps(data, ensure_ascii=False, indent=2)
+
+    if data.get("connecting") is True or "allow" in low_err or "กำลังรอ" in err_text or "connecting" in low_err:
+        return (
+            f"{err_text}\n\n"
+            "[ACTION REQUIRED] Chrome กำลังรอการกดปุ่ม Allow — ห้าม Auto-Retry ซ้ำเอง "
+            "กรุณาให้ผู้ใช้กด Allow บน Chrome ก่อน แล้วค่อยสั่งงานใหม่ (หรือเรียก bridge_status(reconnect=true))"
+        )
+
+    now = time.monotonic()
+    if _LAST_CONNECT_CDP_TS is not None and (now - _LAST_CONNECT_CDP_TS) < _CONNECT_CDP_COOLDOWN_SEC:
+        rem = int(_CONNECT_CDP_COOLDOWN_SEC - (now - _LAST_CONNECT_CDP_TS))
+        return (
+            f"{err_text}\n\n"
+            f"[COOLDOWN {rem}s] เพิ่งส่งคำขอเชื่อม Chrome CDP ไปแล้ว กำลังรอผู้ใช้กด Allow — "
+            "ห้าม Auto-Retry ซ้ำเอง ให้รอผู้ใช้ยืนยันว่ากด Allow แล้วค่อยส่งใหม่ (หรือใช้ bridge_status(reconnect=true))"
+        )
+
+    ccode, cdata = _bridge_request("POST", "/connect-cdp", {}, timeout=15.0)
+    if ccode == 200 and cdata.get("started"):
+        _LAST_CONNECT_CDP_TS = time.monotonic()
+        return (
+            f"{err_text}\n\n"
+            "[SELF-HEAL TRIGGERED] ส่งคำขอเชื่อม Chrome CDP (POST /connect-cdp) ไป 1 ครั้งแล้ว — "
+            "ห้าม Auto-Retry ซ้ำเอง กรุณาให้ผู้ใช้กด Allow บนหน้าต่าง Chrome ก่อน แล้วค่อยสั่งงานใหม่"
+        )
+
+    return (
+        f"{err_text}\n\n"
+        f"[HINT] เรียก bridge_status(reconnect=true) เพื่อสั่งเชื่อม Chrome CDP ใหม่ "
+        f"(connect-cdp response: {json.dumps(cdata, ensure_ascii=False)})"
+    )
 
 def _format_job_text(data: Dict[str, Any]) -> Tuple[str, bool]:
     if not data.get("ok"):
@@ -262,38 +324,69 @@ TOOLS = [
 ]
 
 def _handle_tool_call(name: str, args: Dict[str, Any]) -> Tuple[str, bool]:
+    global _LAST_CONNECT_CDP_TS
     if name == "ask_argon":
+        valid_files, missing_files = _normalize_files(args.get("files"))
+        if missing_files:
+            return f"[PRE-FLIGHT ERROR] ไม่พบไฟล์แนบ: {', '.join(missing_files)}", True
         wait_s = max(0, _safe_int(args.get("waitSeconds"), 180))
         payload = {
             "prompt": args.get("prompt", ""),
-            "files": _normalize_files(args.get("files")),
+            "files": valid_files,
             "thinkingLevel": args.get("thinkingLevel", "HIGH"),
             "fireAndForget": True,
             "maxWait": max(300, wait_s + 60),
         }
         code, data = _bridge_request("POST", "/ask", payload, timeout=135.0)
+        if code == 503:
+            return _handle_cdp_503(data), True
+        if code == 0 and data.get("timeout"):
+            return (
+                "[TIMEOUT] การส่งเข้า /ask ใช้เวลาเกินกำหนด — ห้ามยิงซ้ำทันที ให้เช็กสถานะด้วย extract_latest(target='argon') "
+                "หรือ bridge_status() ก่อน",
+                True,
+            )
         if code != 200 or not data.get("ok"):
             return json.dumps(data, ensure_ascii=False, indent=2), True
         job_id = data.get("jobId")
-        if not job_id and "answer" in data:
-            return f"[JOB DONE] mode=userscript | elapsedMs={data.get('elapsedMs', 0)}\n\n{data.get('answer', '')}", False
-        if wait_s <= 0 or not job_id:
+        direct_ans = data.get("answer")
+        if not job_id and isinstance(direct_ans, str) and direct_ans.strip():
+            return f"[JOB DONE] mode=userscript | elapsedMs={data.get('elapsedMs', 0)}\n\n{direct_ans}", False
+        if not job_id:
+            return f"[BRIDGE ERROR] เซิร์ฟเวอร์ตอบ ok แต่ไม่คืน jobId หรือคำตอบ: {json.dumps(data, ensure_ascii=False)}", True
+        if wait_s <= 0:
             return f"[DISPATCHED] jobId={job_id}", False
         _, jdata = _wait_for_job_result(job_id, total_wait_sec=float(wait_s), include_answer=True)
         return _format_job_text(jdata)
 
     if name == "ask_carbon":
+        valid_files, missing_files = _normalize_files(args.get("files"))
+        if missing_files:
+            return f"[PRE-FLIGHT ERROR] ไม่พบไฟล์แนบ: {', '.join(missing_files)}", True
         wait_s = max(0, _safe_int(args.get("waitSeconds"), 180))
         payload = {
             "prompt": args.get("prompt", ""),
-            "files": _normalize_files(args.get("files")),
+            "files": valid_files,
             "maxWait": max(600, wait_s + 60),
         }
         code, data = _bridge_request("POST", "/ask_carbon", payload, timeout=135.0)
+        if code == 503:
+            return _handle_cdp_503(data), True
+        if code == 0 and data.get("timeout"):
+            return (
+                "[TIMEOUT] การส่งเข้า /ask_carbon ใช้เวลาเกินกำหนด — งานอาจกำลังรันอยู่ใน Cloud Studio "
+                "ให้ตรวจด้วย extract_latest(target='carbon') ก่อนห้ามยิงซ้ำ",
+                True,
+            )
         if code != 200 or not data.get("ok"):
             return json.dumps(data, ensure_ascii=False, indent=2), True
+        direct_ans = data.get("answer") or data.get("markdown") or data.get("text")
         job_id = data.get("jobId")
-        if wait_s <= 0 or not job_id:
+        if isinstance(direct_ans, str) and direct_ans.strip():
+            return f"[JOB DONE] jobId={job_id or '-'} | target=carbon\n\n{direct_ans}", False
+        if not job_id:
+            return f"[BRIDGE ERROR] เซิร์ฟเวอร์ตอบ ok แต่ไม่คืน jobId หรือคำตอบ: {json.dumps(data, ensure_ascii=False)}", True
+        if wait_s <= 0:
             return f"[DISPATCHED] jobId={job_id}", False
         _, jdata = _wait_for_job_result(job_id, total_wait_sec=float(wait_s), include_answer=True)
         return _format_job_text(jdata)
@@ -308,7 +401,9 @@ def _handle_tool_call(name: str, args: Dict[str, Any]) -> Tuple[str, bool]:
 
     if name == "bridge_status":
         if args.get("reconnect"):
-            _, cdata = _bridge_request("POST", "/connect-cdp", {}, timeout=15.0)
+            ccode, cdata = _bridge_request("POST", "/connect-cdp", {}, timeout=15.0)
+            if ccode == 200 and cdata.get("started"):
+                _LAST_CONNECT_CDP_TS = time.monotonic()
             time.sleep(0.5)
             code, sdata = _bridge_request("GET", "/status", timeout=10.0)
             return json.dumps({"connectRequest": cdata, "status": sdata}, ensure_ascii=False, indent=2), (code != 200)
@@ -317,71 +412,87 @@ def _handle_tool_call(name: str, args: Dict[str, Any]) -> Tuple[str, bool]:
 
     if name == "extract_latest":
         target = str(args.get("target", "argon")).strip().lower()
+        if target not in ("argon", "carbon"):
+            return f"Invalid target '{target}' (must be 'argon' or 'carbon')", True
         endpoint = "/extract_carbon" if target == "carbon" else "/extract_markdown"
         code, data = _bridge_request("POST", endpoint, {}, timeout=30.0)
+        if code == 503:
+            return _handle_cdp_503(data), True
         if code != 200 or not data.get("ok"):
             return json.dumps(data, ensure_ascii=False, indent=2), True
         body = data.get("markdown") if target != "carbon" else data.get("text")
-        return f"[EXTRACTED] target={target} | jobId={data.get('jobId', '-')}\n\n{body or ''}", False
+        extra = ""
+        if data.get("generating"):
+            extra += " | generating=true"
+        if data.get("warning"):
+            extra += f"\n[WARNING] {data['warning']}"
+        return f"[EXTRACTED] target={target} | jobId={data.get('jobId', '-')}{extra}\n\n{body or ''}", False
 
     return f"Unknown tool: {name}", True
 
 def _send_rpc(msg: Dict[str, Any]) -> None:
-    sys.stdout.write(json.dumps(msg, ensure_ascii=False) + "\n")
-    sys.stdout.flush()
+    try:
+        sys.stdout.write(json.dumps(msg, ensure_ascii=False) + "\n")
+        sys.stdout.flush()
+    except (BrokenPipeError, OSError):
+        pass
 
 def main() -> None:
-    for raw_line in sys.stdin:
-        line = raw_line.strip()
-        if not line:
-            continue
-        try:
-            req = json.loads(line)
-            if not isinstance(req, dict):
+    try:
+        for raw_line in sys.stdin:
+            line = raw_line.strip()
+            if not line:
                 continue
-        except Exception:
-            continue
-        req_id = req.get("id")
-        method = req.get("method")
-        params = req.get("params") if isinstance(req.get("params"), dict) else {}
-
-        if method == "initialize":
-            _send_rpc({
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "result": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "vertex-bridge-mcp", "version": "1.0.0"}
-                }
-            })
-        elif method == "ping":
-            _send_rpc({"jsonrpc": "2.0", "id": req_id, "result": {}})
-        elif isinstance(method, str) and method.startswith("notifications/"):
-            continue
-        elif method == "tools/list":
-            _send_rpc({"jsonrpc": "2.0", "id": req_id, "result": {"tools": TOOLS}})
-        elif method == "tools/call":
-            tname = str(params.get("name", ""))
-            targs = params.get("arguments") if isinstance(params.get("arguments"), dict) else {}
             try:
-                text, is_err = _handle_tool_call(tname, targs)
-            except Exception as e:
-                text, is_err = f"Internal MCP tool error ({tname}): {e}", True
-            _send_rpc({
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "result": {
-                    "content": [{"type": "text", "text": text}],
-                    "isError": is_err
-                }
-            })
-        elif req_id is not None:
-            _send_rpc({
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "error": {"code": -32601, "message": f"Method not found: {method}"}
-            })
+                req = json.loads(line)
+                if not isinstance(req, dict):
+                    continue
+            except Exception:
+                continue
+            req_id = req.get("id")
+            method = req.get("method")
+            params = req.get("params") if isinstance(req.get("params"), dict) else {}
+
+            if method == "initialize":
+                client_proto = str(params.get("protocolVersion") or "").strip() or DEFAULT_PROTOCOL_VERSION
+                _send_rpc({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "protocolVersion": client_proto,
+                        "capabilities": {"tools": {}},
+                        "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION}
+                    }
+                })
+            elif method == "ping":
+                _send_rpc({"jsonrpc": "2.0", "id": req_id, "result": {}})
+            elif isinstance(method, str) and method.startswith("notifications/"):
+                continue
+            elif method == "tools/list":
+                _send_rpc({"jsonrpc": "2.0", "id": req_id, "result": {"tools": TOOLS}})
+            elif method == "tools/call":
+                tname = str(params.get("name", ""))
+                targs = params.get("arguments") if isinstance(params.get("arguments"), dict) else {}
+                try:
+                    text, is_err = _handle_tool_call(tname, targs)
+                except Exception as e:
+                    text, is_err = f"Internal MCP tool error ({tname}): {e}", True
+                _send_rpc({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "content": [{"type": "text", "text": text}],
+                        "isError": is_err
+                    }
+                })
+            elif req_id is not None:
+                _send_rpc({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {"code": -32601, "message": f"Method not found: {method}"}
+                })
+    except (BrokenPipeError, KeyboardInterrupt):
+        pass
 
 
 if __name__ == "__main__":

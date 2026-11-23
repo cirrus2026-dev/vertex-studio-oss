@@ -107,7 +107,7 @@ _CARBON_EXTRACT_JS = r"""(() => {
         const code = node.querySelector('code');
         const pre = node.querySelector('pre') || (tag === 'pre' ? node : null);
         let lang = '';
-        const langEl = node.querySelector('.header-text, .code-block-header, .language-header, [class*="language-"]');
+        const langEl = node.querySelector('.header-text, .code-block-header, .language-header, [class*="language-"]:not(code):not(pre)');
         if (langEl) {
           lang = langEl.textContent.trim().toLowerCase();
         } else if (code) {
@@ -173,7 +173,7 @@ _CARBON_EXTRACT_JS = r"""(() => {
         const inlineParts = [];
         const sublistParts = [];
         for (const child of node.childNodes) {
-          if (child.nodeType === Node.ELEMENT_NODE && ['ul', 'ol'].includes(child.tagName.toLowerCase())) {
+          if (child.nodeType === Node.ELEMENT_NODE && ['ul', 'ol', 'pre', 'code-block', 'ms-code-block'].includes(child.tagName.toLowerCase())) {
             sublistParts.push(walk(child, depth));
           } else {
             inlineParts.push(walk(child, depth));
@@ -190,6 +190,21 @@ _CARBON_EXTRACT_JS = r"""(() => {
 
       if (tag === 'hr') return '\n---\n\n';
       if (tag === 'br') return '\n';
+      if (tag === 'table') {
+        const rows = Array.from(node.querySelectorAll('tr'));
+        if (rows.length === 0) return '';
+        const mdRows = [];
+        rows.forEach((tr) => {
+          const cells = Array.from(tr.querySelectorAll('th, td'));
+          const cellTexts = cells.map(cell => walk(cell).replace(/\s+/g, ' ').replace(/\|/g, '\\|').trim());
+          if (cellTexts.length === 0) return;
+          mdRows.push('| ' + cellTexts.join(' | ') + ' |');
+          if (mdRows.length === 1) {
+            mdRows.push('| ' + cellTexts.map(() => '---').join(' | ') + ' |');
+          }
+        });
+        return mdRows.length > 0 ? '\n\n' + mdRows.join('\n') + '\n\n' : '';
+      }
 
       return Array.from(node.childNodes).map(c => walk(c, depth, listType, listIndex)).join('');
     }
@@ -267,6 +282,21 @@ def _prune_history_dir(hist_dir: str, prefix: str, keep: int = MAX_HISTORY_FILES
     except Exception as e:
         log.warning("History prune skipped (%s): %r", hist_dir, e)
 
+import threading
+
+_HIST_LOCKS: Dict[str, threading.Lock] = {}
+_HIST_LOCKS_GUARD = threading.Lock()
+_ACTIVE_JOB_IDS: Dict[str, str] = {}
+
+def _get_hist_lock(hist_dir: str) -> threading.Lock:
+    key = os.path.normcase(os.path.abspath(hist_dir))
+    with _HIST_LOCKS_GUARD:
+        lk = _HIST_LOCKS.get(key)
+        if lk is None:
+            lk = threading.Lock()
+            _HIST_LOCKS[key] = lk
+        return lk
+
 def set_job_pending(hist_dir: str, job_id: str, prompt_snippet: str = "") -> Dict[str, Any]:
     """ขึ้นป้ายไฟแดง (generating) แบบ Atomic"""
     status_file = os.path.join(hist_dir, "latest.status.json")
@@ -276,10 +306,13 @@ def set_job_pending(hist_dir: str, job_id: str, prompt_snippet: str = "") -> Dic
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "prompt": (prompt_snippet or "")[:120].strip(),
     }
-    try:
-        _atomic_write_file(status_file, json.dumps(status_data, ensure_ascii=False, indent=2))
-    except Exception as e:
-        log.warning("set_job_pending failed: %r", e)
+    key = os.path.normcase(os.path.abspath(hist_dir))
+    with _get_hist_lock(hist_dir):
+        _ACTIVE_JOB_IDS[key] = job_id
+        try:
+            _atomic_write_file(status_file, json.dumps(status_data, ensure_ascii=False, indent=2))
+        except Exception as e:
+            log.warning("set_job_pending failed: %r", e)
     return status_data
 
 def set_job_failed(
@@ -300,10 +333,15 @@ def set_job_failed(
     }
     if elapsed_ms is not None:
         status_data["elapsedMs"] = int(elapsed_ms)
-    try:
-        _atomic_write_file(status_file, json.dumps(status_data, ensure_ascii=False, indent=2))
-    except Exception as e:
-        log.warning("set_job_failed write error: %r", e)
+    key = os.path.normcase(os.path.abspath(hist_dir))
+    with _get_hist_lock(hist_dir):
+        active = _ACTIVE_JOB_IDS.get(key)
+        if active and active != job_id:
+            return status_data
+        try:
+            _atomic_write_file(status_file, json.dumps(status_data, ensure_ascii=False, indent=2))
+        except Exception as e:
+            log.warning("set_job_failed write error: %r", e)
     return status_data
 
 def atomic_save_history(
@@ -325,27 +363,38 @@ def atomic_save_history(
 
     full_text = meta + content
 
-    # 1. เขียนไฟล์ประวัติเฉพาะงานนี้แบบ Atomic
-    _atomic_write_file(hist_file, full_text)
+    key = os.path.normcase(os.path.abspath(hist_dir))
+    with _get_hist_lock(hist_dir):
+        # 1. เขียนไฟล์ประวัติเฉพาะงานนี้แบบ Atomic
+        _atomic_write_file(hist_file, full_text)
 
-    # 2. เขียน latest.md แบบ Atomic
-    _atomic_write_file(latest_file, full_text)
+        active = _ACTIVE_JOB_IDS.get(key)
+        is_extract = effective_job_id.startswith(("argon_extract_", "carbon_extract_"))
+        if active and active != effective_job_id and not is_extract:
+            return {
+                "jobId": effective_job_id,
+                "state": "superseded",
+                "historyFile": hist_file,
+            }
 
-    # 3. อัปเดตสถานะเป็น DONE เป็นลำดับสุดท้าย (Commit Signal)
-    status_data: Dict[str, Any] = {
-        "jobId": effective_job_id,
-        "state": "done",
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "chars": len(content),
-        "latestFile": latest_file,
-        "historyFile": hist_file,
-    }
-    if elapsed_ms is not None:
-        status_data["elapsedMs"] = int(elapsed_ms)
+        # 2. เขียน latest.md แบบ Atomic
+        _atomic_write_file(latest_file, full_text)
 
-    _atomic_write_file(status_file, json.dumps(status_data, ensure_ascii=False, indent=2))
-    _prune_history_dir(hist_dir, prefix)
-    return status_data
+        # 3. อัปเดตสถานะเป็น DONE เป็นลำดับสุดท้าย (Commit Signal)
+        status_data: Dict[str, Any] = {
+            "jobId": effective_job_id,
+            "state": "done",
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "chars": len(content),
+            "latestFile": latest_file,
+            "historyFile": hist_file,
+        }
+        if elapsed_ms is not None:
+            status_data["elapsedMs"] = int(elapsed_ms)
+
+        _atomic_write_file(status_file, json.dumps(status_data, ensure_ascii=False, indent=2))
+        _prune_history_dir(hist_dir, prefix)
+        return status_data
 
 def _read_disk_job_sync(job_id: str, include_answer: bool = False) -> Optional[Dict[str, Any]]:
     """ค้นหาข้อมูลงานจากดิสก์เป็น Fallback (รองรับกรณี Bridge ถูกรีสตาร์ท)"""
@@ -451,6 +500,7 @@ class HardenedChromeClient(ChromeClient):
     ) -> None:
         entry = dict(self._jobs.get(job_id) or {})
         entry.update(status_data)
+        entry.pop("error", None)
         entry["jobId"] = job_id
         entry["target"] = target
         entry["state"] = "done"
@@ -1390,17 +1440,23 @@ class HardenedChromeClient(ChromeClient):
 
             # 3. กดส่งคำสั่ง (Run / Send / Enter)
             js_send = """(() => {
-                const allBtns = Array.from(document.querySelectorAll('button, [role="button"]'));
-                const runBtn = allBtns.find(b => {
-                    if (b.disabled || b.getAttribute('aria-disabled') === 'true') return false;
-                    const label = (b.innerText || b.getAttribute('aria-label') || '').toLowerCase();
-                    return label.includes('run') || label.includes('send') || label.includes('rerun');
+                const box = document.querySelector('div[role="textbox"]') || document.querySelector('textarea');
+                const scope = (box && (box.closest('form, ms-prompt-input-wrapper, .prompt-input-container, [class*="composer"], [class*="input-wrapper"]'))) || document;
+                const btns = Array.from(scope.querySelectorAll('button, [role="button"]')).reverse();
+                const isVisible = (el) => {
+                    const r = el.getBoundingClientRect();
+                    return r.width > 0 && r.height > 0;
+                };
+                const runBtn = btns.find(b => {
+                    if (b.disabled || b.getAttribute('aria-disabled') === 'true' || !isVisible(b)) return false;
+                    if (b.closest('code-block, ms-code-block, pre')) return false;
+                    const label = (b.getAttribute('aria-label') || b.innerText || '').trim().toLowerCase();
+                    return /^send$|^run$|\\bsend\\b|\\brun\\b/.test(label) && !label.includes('rerun');
                 });
                 if (runBtn) {
                     runBtn.click();
                     return 'CLICKED_RUN';
                 }
-                const box = document.querySelector('div[role="textbox"]') || document.querySelector('textarea');
                 if (box) {
                     box.focus();
                     box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
@@ -1504,14 +1560,31 @@ class HardenedChromeClient(ChromeClient):
                     return
                 log.info("Carbon (%s) is still generating after timeout; continuing background late-save watch...", job_id)
                 late_deadline = time.monotonic() + 600.0
+                late_stable = 0
+                late_prev_sig = None
                 while time.monotonic() < late_deadline:
+                    if not self.connected:
+                        return
                     await asyncio.sleep(15.0)
+                    if not self.connected:
+                        return
                     try:
                         st = await self._read_carbon_state(sid, timeout=10.0)
                     except Exception:
+                        late_stable = 0
+                        late_prev_sig = None
                         continue
-                    if not st.get("isGen") and int(st.get("lastLen", 0)) > 0:
-                        break
+                    cur_len = int(st.get("lastLen", 0))
+                    cur_hash = st.get("lastHash")
+                    if not st.get("isGen") and cur_len > 0:
+                        sig = (cur_len, cur_hash)
+                        late_stable = late_stable + 1 if sig == late_prev_sig else 1
+                        late_prev_sig = sig
+                        if late_stable >= 2:
+                            break
+                    else:
+                        late_stable = 0
+                        late_prev_sig = None
                 else:
                     return
 
@@ -1549,13 +1622,24 @@ class HardenedChromeClient(ChromeClient):
     async def extract_carbon_markdown(self) -> Dict[str, Any]:
         """ดึงคำตอบล่าสุดจากแท็บ Google Cloud Studio (Carbon) และเซฟลง latest.md ทันที"""
         tid, sid, url = await self.find_and_attach_carbon()
+        st = {}
+        try:
+            st = await self._read_carbon_state(sid, timeout=10.0)
+        except Exception:
+            pass
         res = await self.eval_js(sid, _CARBON_EXTRACT_JS, timeout=15.0)
         text = (res or {}).get("text", "").strip() if res else ""
-        job_id = f"carbon_extract_{time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:4]}"
-        if text:
-            meta = f"<!-- Auto-Saved by Carbon Extract at {time.strftime('%Y-%m-%d %H:%M:%S')} | Job: {job_id} -->\n\n"
-            status_data = await asyncio.to_thread(
-                atomic_save_history, CARBON_HIST_DIR, "carbon", text, meta, job_id
-            )
-            self._mark_job_done_mem(job_id, "carbon", status_data, text)
-        return {"ok": True, "jobId": job_id, "text": text, "url": (res or {}).get("url", url)}
+        is_gen = bool(st.get("isGen"))
+        job_id = None
+        if text and not is_gen:
+            cand_id = f"carbon_extract_{time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:4]}"
+            meta = f"<!-- Auto-Saved by Carbon Extract at {time.strftime('%Y-%m-%d %H:%M:%S')} | Job: {cand_id} -->\n\n"
+            try:
+                status_data = await asyncio.to_thread(
+                    atomic_save_history, CARBON_HIST_DIR, "carbon", text, meta, cand_id
+                )
+                self._mark_job_done_mem(cand_id, "carbon", status_data, text)
+                job_id = cand_id
+            except Exception as save_err:
+                log.warning("extract_carbon_markdown save failed: %r", save_err)
+        return {"ok": True, "jobId": job_id, "generating": is_gen, "text": text, "url": (res or {}).get("url", url)}

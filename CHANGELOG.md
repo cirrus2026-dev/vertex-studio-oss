@@ -4,6 +4,22 @@
 
 ---
 
+## 🚀 เวอร์ชัน 4.1.1 (24 พฤศจิกายน 2026) - Carbon Send Fix, Security Hardening & Swarm Reliability
+- **แก้ไขปุ่ม Send ของ Cloud Studio (`chrome_cdp_fixes.py`):**
+  - จำกัดขอบเขตการค้นหาปุ่ม `Send`/`Run` ใน `ask_carbon_tab` ให้อยู่ภายในกล่อง Composer และไล่จากล่างขึ้นบน พร้อมเช็ก `isVisible` และตัด `rerun` ออก แก้ปัญหาเด้งป๊อปอัป **"Exit without saving"** และกดส่งไม่ติด
+- **ความปลอดภัยและความเสถียรฝั่ง Server & Middleware (`bridge_security.py`, `gemini_bridge_server.py`):**
+  - จำกัด `Upgrade: websocket` Bypass ให้ผ่านเฉพาะ `GET /ws` เท่านั้น ปิดช่องโหว่ข้าม `X-Bridge-Token` บน Endpoint อื่น
+  - ใช้ `reuse_address=False` และย้าย `_persist_bridge_token()` มาไว้หลัง `await site.start()` ภายใน `try...finally` ป้องกันรันซ้ำแล้วเขียนทับไฟล์ Token จนเกิด `403 missing or invalid token`
+  - เพิ่ม `asyncio.shield` บน `fireAndForget` และ `_track_server_task` เก็บ Exception ป้องกัน `aiohttp` ยกเลิกงานกลางคัน พร้อมส่งสถานะ `connecting` / `generating` จาก `/extract_*`
+- **ความเสถียรท่อดูดคำตอบ, Commit Barrier & Bundler (`chrome_cdp.py`, `chrome_cdp_fixes.py`, `bundle_project.py`):**
+  - แก้ selector `[class*="language-"]:not(code):not(pre)` ไม่ให้ดูดโค้ดทั้งก้อนมาเป็นชื่อภาษา และกรอง `response-element` เฉพาะส่วนที่ไม่มีเนื้อหาจริง
+  - เพิ่มตัวแปลง `<table>` -> Markdown Table และแยก `pre`/`code-block` ใน `<li>` ให้ Carbon Extractor รวมทั้งปรับ Late-Save Carbon ให้เช็ก `(lastLen, lastHash)` คงที่ 2 รอบ + เช็ก `self.connected` + ล้าง `error` เก่าเมื่อกู้คืนสำเร็จ
+  - เพิ่ม Per-Directory Lock + `_ACTIVE_JOB_IDS` Guard กัน `latest.md` และ `latest.status.json` สลับงานกัน
+  - แก้ `bundle_project.py` กรณีส่ง 1 ไฟล์ (`os.path.dirname`) และข้ามไดรฟ์บน Windows ไม่ให้แครช
+- **MCP Self-Healing, CLI Dispatch & Skills (`bridge_mcp_server.py`, `dispatch.py`, `SKILL.md`):**
+  - เพิ่ม `_NO_PROXY_OPENER`, Pre-flight เช็กไฟล์ + `NFC`, แยกจับ `TimeoutError`, แก้ `jobId=None`/`direct_ans` ว่าง, และเพิ่ม `_handle_cdp_503` (Cooldown 65s + `connecting` detection)
+  - อัปเกรด `dispatch.py` ให้รองรับ `--target carbon`, ชื่อ Bundle สุ่ม UUID + ลบไฟล์เก่าอัตโนมัติ, Fail-Fast เมื่อไม่พบไฟล์, `BRIDGE_PORT`, และบันทึกกฎ Auto-reconnect on HTTP 503 ลงใน `SKILL.md`
+
 ## 🚀 เวอร์ชัน 4.1.0 (23 พฤศจิกายน 2026) - Multi-Tab Swarm Routing & Draft Mode
 - **Multi-Tab Swarm Routing (`GET /tabs` + `target_id` / `tab_url`):**
   - เพิ่ม Endpoint `GET /tabs` ใน `gemini_bridge_server.py` เพื่อแสดงรายการแท็บ Gemini (`argon`) และ Google Cloud Studio (`carbon`) ทั้งหมดที่เปิดอยู่ใน Chrome พร้อม `target_id`, `url`, `title` และ `kind` (รองรับ `?all=1` เพื่อดูทุกแท็บ)

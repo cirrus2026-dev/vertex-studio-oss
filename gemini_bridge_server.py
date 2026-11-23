@@ -45,7 +45,13 @@ cdp_status = {
 
 def _track_server_task(task: asyncio.Task) -> asyncio.Task:
     server_bg_tasks.add(task)
-    task.add_done_callback(server_bg_tasks.discard)
+    def _on_done(t: asyncio.Task):
+        server_bg_tasks.discard(t)
+        if not t.cancelled():
+            exc = t.exception()
+            if exc is not None:
+                print(f"[Bridge Server] Background task error: {exc!r}")
+    task.add_done_callback(_on_done)
     return task
 
 def _persist_bridge_token(port: int, token: str):
@@ -265,7 +271,14 @@ async def handle_eval(request):
 async def handle_extract_carbon(request):
     """ดึงคำตอบล่าสุดจากแท็บ Google Cloud Studio (Carbon) และเซฟลง latest.md ทันที"""
     if not cdp_client.connected:
-        return web.json_response({"ok": False, "error": "Chrome CDP not connected"}, status=503)
+        return web.json_response(
+            {
+                "ok": False,
+                "connecting": bool(cdp_status.get("connecting")),
+                "error": "กำลังรอการกด Allow บน Chrome CDP อยู่" if cdp_status.get("connecting") else "Chrome CDP not connected",
+            },
+            status=503,
+        )
     try:
         async with cdp_client.carbon_lock:
             res = await cdp_client.extract_carbon_markdown()
@@ -276,21 +289,38 @@ async def handle_extract_carbon(request):
 async def handle_extract_markdown(request):
     """ดึงคำตอบล่าสุดจากแท็บ Gemini และแปลงเป็น Markdown โครงสร้างสมบูรณ์ทันที พร้อมเซฟลง latest.md"""
     if not cdp_client.connected:
-        return web.json_response({"ok": False, "error": "Chrome CDP not connected"}, status=503)
+        return web.json_response(
+            {
+                "ok": False,
+                "connecting": bool(cdp_status.get("connecting")),
+                "error": "กำลังรอการกด Allow บน Chrome CDP อยู่" if cdp_status.get("connecting") else "Chrome CDP not connected",
+            },
+            status=503,
+        )
     try:
         async with cdp_client.ask_lock:
             _, sid, tab_url = await cdp_client.find_and_attach_gemini()
+            st = {}
+            try:
+                st = await cdp_client.read_state(sid)
+            except Exception:
+                pass
             md = await cdp_client.extract_last_message_markdown(sid)
+            is_gen = bool(st.get("isGenerating"))
             job_id = None
-            if md and md.strip():
+            if md and md.strip() and not is_gen:
                 hist_dir = os.path.join(os.path.dirname(__file__), "argon_history")
-                job_id = f"argon_extract_{time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:4]}"
-                meta = f"<!-- Auto-Saved by Extract Markdown at {time.strftime('%Y-%m-%d %H:%M:%S')} | Job: {job_id} -->\n\n"
-                status_data = await asyncio.to_thread(
-                    atomic_save_history, hist_dir, "argon", md.strip(), meta, job_id
-                )
-                cdp_client._mark_job_done_mem(job_id, "argon", status_data, md.strip())
-        return web.json_response({"ok": True, "jobId": job_id, "tabUrl": tab_url, "markdown": md})
+                cand_id = f"argon_extract_{time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:4]}"
+                meta = f"<!-- Auto-Saved by Extract Markdown at {time.strftime('%Y-%m-%d %H:%M:%S')} | Job: {cand_id} -->\n\n"
+                try:
+                    status_data = await asyncio.to_thread(
+                        atomic_save_history, hist_dir, "argon", md.strip(), meta, cand_id
+                    )
+                    cdp_client._mark_job_done_mem(cand_id, "argon", status_data, md.strip())
+                    job_id = cand_id
+                except Exception as save_err:
+                    print(f"[Bridge Server] Warning: atomic_save_history failed: {save_err}")
+        return web.json_response({"ok": True, "jobId": job_id, "generating": is_gen, "tabUrl": tab_url, "markdown": md})
     except Exception as e:
         return web.json_response({"ok": False, "error": str(e)}, status=500)
 
@@ -415,13 +445,19 @@ async def handle_ask_carbon(request):
     target_id, tab_url, draft_only = _parse_swarm_and_draft_params(post_data)
 
     try:
-        res = await cdp_client.ask_carbon_tab(
-            prompt_text=prompt,
-            files=files,
-            timeout=max_wait,
-            target_id=target_id,
-            tab_url=tab_url,
-            draft_only=draft_only,
+        res = await asyncio.shield(
+            _track_server_task(
+                asyncio.create_task(
+                    cdp_client.ask_carbon_tab(
+                        prompt_text=prompt,
+                        files=files,
+                        timeout=max_wait,
+                        target_id=target_id,
+                        tab_url=tab_url,
+                        draft_only=draft_only,
+                    )
+                )
+            )
         )
         status_code = 200 if res.get("ok") else 400
         return web.json_response(res, status=status_code)
@@ -463,7 +499,7 @@ async def handle_ask(request):
     # 1. ใช้ท่อ Persistent Chrome CDP โดยตรงเป็นอันดับแรก
     if cdp_client.connected:
         try:
-            res = await cdp_client.ask_gemini_tab(
+            coro = cdp_client.ask_gemini_tab(
                 prompt,
                 web_model=web_model,
                 thinking_level=thinking_level,
@@ -474,6 +510,10 @@ async def handle_ask(request):
                 tab_url=tab_url,
                 draft_only=draft_only,
             )
+            if fire_and_forget:
+                res = await asyncio.shield(_track_server_task(asyncio.create_task(coro)))
+            else:
+                res = await coro
             if res.get("limit"):
                 status_code = 422
             elif res.get("ok"):
@@ -812,7 +852,6 @@ async def handle_index(request):
     return html_response(INDEX_HTML, TOKEN, allow_tailwind_cdn=False)
 
 async def main():
-    _persist_bridge_token(PORT, TOKEN)
     app = web.Application(
         middlewares=[make_security_middleware(PORT, TOKEN)],
         client_max_size=32 * 1024 * 1024,
@@ -834,20 +873,21 @@ async def main():
     app.router.add_get("/ws", ws_handler)
 
     runner = web.AppRunner(app, handler_cancellation=True)
-    await runner.setup()
-    site = web.TCPSite(runner, "127.0.0.1", PORT)
-    await site.start()
-
-    print("===========================================================")
-    print(f"🚀 Gemini Web Persistent Bridge Server (v4.0) on port {PORT}")
-    print(f"👉 Web Panel: http://127.0.0.1:{PORT}")
-    print(f"👉 Job API:   GET http://127.0.0.1:{PORT}/jobs/{{job_id}}?wait=30&includeAnswer=1")
-    print("👉 Security:  Middleware Token Auth + Host/Origin Guard Active")
-    print("👉 Triggering SINGLE CDP connection to Chrome (timeout 60s)...")
-    print("===========================================================")
-
-    cdp_task = _track_server_task(asyncio.create_task(ensure_cdp_connected()))
     try:
+        await runner.setup()
+        site = web.TCPSite(runner, "127.0.0.1", PORT, reuse_address=False)
+        await site.start()
+        _persist_bridge_token(PORT, TOKEN)
+
+        print("===========================================================")
+        print(f"🚀 Gemini Web Persistent Bridge Server (v4.0) on port {PORT}")
+        print(f"👉 Web Panel: http://127.0.0.1:{PORT}")
+        print(f"👉 Job API:   GET http://127.0.0.1:{PORT}/jobs/{{job_id}}?wait=30&includeAnswer=1")
+        print("👉 Security:  Middleware Token Auth + Host/Origin Guard Active")
+        print("👉 Triggering SINGLE CDP connection to Chrome (timeout 60s)...")
+        print("===========================================================")
+
+        cdp_task = _track_server_task(asyncio.create_task(ensure_cdp_connected()))
         while True:
             await asyncio.sleep(3600)
     finally:

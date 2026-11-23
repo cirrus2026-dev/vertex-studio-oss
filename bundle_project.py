@@ -147,7 +147,10 @@ def bundle(files, out_path, mode="audit", base_dir=None):
             file_count = 1
         else:
             for fpath in files:
-                rel_path = os.path.relpath(fpath, base_dir) if base_dir else os.path.basename(fpath)
+                try:
+                    rel_path = os.path.relpath(fpath, base_dir) if base_dir else os.path.basename(fpath)
+                except ValueError:
+                    rel_path = os.path.basename(fpath)
                 ext = os.path.splitext(fpath)[1].lower()
                 out.write(f"# ==================== FILE: {rel_path} ====================\n")
                 try:
@@ -184,9 +187,16 @@ def main():
 
     if args.files:
         target_files = [os.path.abspath(f) for f in args.files if os.path.isfile(f) and os.path.abspath(f) != out_file and not is_sensitive(f)]
-        try:
-            base_dir = os.path.commonpath(target_files) if target_files else os.getcwd()
-        except ValueError:
+        if len(target_files) == 1:
+            base_dir = os.path.dirname(target_files[0])
+        elif len(target_files) > 1:
+            try:
+                base_dir = os.path.commonpath(target_files)
+                if os.path.isfile(base_dir):
+                    base_dir = os.path.dirname(base_dir)
+            except ValueError:
+                base_dir = None
+        else:
             base_dir = os.getcwd()
     elif args.dir:
         base_dir = os.path.abspath(args.dir)

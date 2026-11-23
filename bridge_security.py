@@ -45,7 +45,12 @@ def make_security_middleware(
         if request.host.lower() not in hosts:                          # DNS rebinding: Host must be exactly us
             raise web.HTTPForbidden(text="bad host")
         origin = request.headers.get("Origin")
-        if request.headers.get("Upgrade", "").lower() == "websocket":
+        is_ws_handshake = (
+            request.path == "/ws"
+            and request.method == "GET"
+            and request.headers.get("Upgrade", "").lower() == "websocket"
+        )
+        if is_ws_handshake:
             if origin not in ws_ok:                                    # browsers always send Origin on a WS handshake
                 raise web.HTTPForbidden(text="bad origin")
         else:

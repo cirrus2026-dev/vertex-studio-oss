@@ -319,6 +319,63 @@ async def handle_upload(request):
     except Exception as e:
         return web.json_response({"ok": False, "error": str(e)}, status=500)
 
+def _parse_swarm_and_draft_params(post_data):
+    """ดึงพารามิเตอร์ target_id, tab_url และ draft_only (หรือ auto_send) จาก request body"""
+    target_id = post_data.get("target_id") or post_data.get("targetId")
+    if isinstance(target_id, str):
+        target_id = target_id.strip() or None
+    else:
+        target_id = None
+
+    tab_url = post_data.get("tab_url") or post_data.get("tabUrl")
+    if isinstance(tab_url, str):
+        tab_url = tab_url.strip() or None
+    else:
+        tab_url = None
+
+    if "draft_only" in post_data:
+        draft_only = bool(post_data.get("draft_only"))
+    elif "auto_send" in post_data:
+        draft_only = not bool(post_data.get("auto_send"))
+    else:
+        draft_only = False
+
+    return target_id, tab_url, draft_only
+
+
+async def handle_tabs(request):
+    """API แสดงรายการแท็บ Gemini / Cloud Studio ทั้งหมดที่เปิดอยู่ใน Chrome (พร้อม target_id และ url)"""
+    if not cdp_client.connected:
+        return web.json_response(
+            {"ok": False, "error": f"Chrome CDP not connected ({cdp_status.get('error') or 'Not connected'})"},
+            status=503,
+        )
+    try:
+        include_all = request.query.get("all") in ("1", "true", "yes")
+        raw_tabs = await cdp_client.get_tabs()
+        result_tabs = []
+        for t in raw_tabs:
+            url = t.get("url", "")
+            if "gemini.google.com" in url:
+                kind = "argon"
+            elif "agent-platform/studio" in url:
+                kind = "carbon"
+            else:
+                kind = "other"
+            if include_all or kind != "other":
+                result_tabs.append(
+                    {
+                        "target_id": t.get("targetId"),
+                        "url": url,
+                        "title": t.get("title", ""),
+                        "kind": kind,
+                    }
+                )
+        return web.json_response({"ok": True, "count": len(result_tabs), "tabs": result_tabs})
+    except Exception as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+
+
 async def handle_ask_carbon(request):
     """API สำหรับส่งคำถามและไฟล์ตรงเข้าแท็บ Google Cloud Studio (Carbon) ผ่าน Persistent CDP Session"""
     if not cdp_client.connected:
@@ -355,8 +412,17 @@ async def handle_ask_carbon(request):
     except (TypeError, ValueError):
         max_wait = 600.0
 
+    target_id, tab_url, draft_only = _parse_swarm_and_draft_params(post_data)
+
     try:
-        res = await cdp_client.ask_carbon_tab(prompt_text=prompt, files=files, timeout=max_wait)
+        res = await cdp_client.ask_carbon_tab(
+            prompt_text=prompt,
+            files=files,
+            timeout=max_wait,
+            target_id=target_id,
+            tab_url=tab_url,
+            draft_only=draft_only,
+        )
         status_code = 200 if res.get("ok") else 400
         return web.json_response(res, status=status_code)
     except CDPError as e:
@@ -387,6 +453,7 @@ async def handle_ask(request):
         return web.json_response({"ok": False, "error": "files ต้องเป็น list หรือ string"}, status=400)
 
     fire_and_forget = bool(post_data.get("fireAndForget", False))
+    target_id, tab_url, draft_only = _parse_swarm_and_draft_params(post_data)
     raw_max_wait = post_data.get("maxWait")
     try:
         max_wait = max(30.0, min(float(raw_max_wait), 900.0)) if raw_max_wait is not None else 300.0
@@ -403,6 +470,9 @@ async def handle_ask(request):
                 files=files,
                 max_wait=max_wait,
                 fire_and_forget=fire_and_forget,
+                target_id=target_id,
+                tab_url=tab_url,
+                draft_only=draft_only,
             )
             if res.get("limit"):
                 status_code = 422
@@ -749,6 +819,7 @@ async def main():
     )
     app.router.add_get("/", handle_index)
     app.router.add_get("/status", handle_status)
+    app.router.add_get("/tabs", handle_tabs)
     app.router.add_get("/jobs/{job_id}", handle_get_job)
     app.router.add_post("/ask", handle_ask)
     app.router.add_post("/ask_carbon", handle_ask_carbon)

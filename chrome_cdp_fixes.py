@@ -703,8 +703,37 @@ class HardenedChromeClient(ChromeClient):
                     return t
         return None
 
-    async def find_and_attach_gemini(self):
-        if self.gemini_session_id and self.gemini_target_id:
+    async def _resolve_tab_target(
+        self,
+        default_matcher,
+        target_id: Optional[str] = None,
+        tab_url: Optional[str] = None,
+        not_found_msg: str = "ไม่พบแท็บที่ต้องการใน Chrome",
+    ):
+        """ค้นหาและ attach เข้าแท็บตาม target_id หรือ tab_url ที่ระบุ (หรือใช้ default_matcher)"""
+        tabs = await self.get_tabs()
+        tab = None
+        if target_id:
+            tab = next((t for t in tabs if t.get("targetId") == target_id), None)
+            if not tab:
+                raise CDPError(f"ไม่พบแท็บที่มี target_id={target_id}")
+        elif tab_url:
+            tab = next((t for t in tabs if tab_url in t.get("url", "")), None)
+            if not tab:
+                raise CDPError(f"ไม่พบแท็บที่มี URL ตรงกับ '{tab_url}'")
+        else:
+            tab = default_matcher(tabs)
+            if not tab:
+                raise CDPError(not_found_msg)
+
+        tid = tab["targetId"]
+        sid = await self.attach_tab(tid)
+        if not sid:
+            raise CDPError(f"ไม่สามารถ Attach เข้าแท็บ {tid} ได้")
+        return tid, sid, tab.get("url", "")
+
+    async def find_and_attach_gemini(self, target_id: Optional[str] = None, tab_url: Optional[str] = None):
+        if not target_id and not tab_url and self.gemini_session_id and self.gemini_target_id:
             try:
                 url = await self.eval_js(self.gemini_session_id, "window.location.href", timeout=5.0)
                 if url and "gemini.google.com" in url:
@@ -713,15 +742,15 @@ class HardenedChromeClient(ChromeClient):
                 pass
             await self._detach(self.gemini_session_id)
             self.gemini_session_id = self.gemini_target_id = None
-        tab = self._pick_tab(await self.get_tabs())
-        if not tab:
-            raise CDPError("ไม่พบแท็บ gemini.google.com เปิดอยู่ใน Chrome")
-        tid = tab["targetId"]
-        sid = await self.attach_tab(tid)
-        if not sid:
-            raise CDPError("ไม่สามารถ Attach เข้าแท็บ Gemini ได้")
-        self.gemini_target_id, self.gemini_session_id = tid, sid
-        return tid, sid, tab.get("url", "")
+        tid, sid, url = await self._resolve_tab_target(
+            self._pick_tab,
+            target_id=target_id,
+            tab_url=tab_url,
+            not_found_msg="ไม่พบแท็บ gemini.google.com เปิดอยู่ใน Chrome",
+        )
+        if not target_id and not tab_url:
+            self.gemini_target_id, self.gemini_session_id = tid, sid
+        return tid, sid, url
 
     async def _detach(self, sid: Optional[str]) -> None:
         if sid:
@@ -926,11 +955,14 @@ class HardenedChromeClient(ChromeClient):
         send_confirm_timeout: float = 10.0,
         quiet_samples: int = 4,
         fire_and_forget: bool = False,
+        target_id: Optional[str] = None,
+        tab_url: Optional[str] = None,
+        draft_only: bool = False,
     ):
         async with self.ask_lock:
             t0 = time.monotonic()
             deadline = t0 + max_wait
-            tid, sid, _ = await self.find_and_attach_gemini()
+            tid, sid, resolved_url = await self.find_and_attach_gemini(target_id=target_id, tab_url=tab_url)
             try:
                 await self.send_cmd("Target.activateTarget", {"targetId": tid}, timeout=5.0)
             except Exception:
@@ -960,6 +992,20 @@ class HardenedChromeClient(ChromeClient):
             typed = await self.eval_js(sid, self.type_js(prompt_text))
             if not typed or not typed.get("success"):
                 return {"ok": False, "error": (typed or {}).get("error", "ไม่สามารถพิมพ์ข้อความลงแท็บ Gemini ได้")}
+
+            if draft_only:
+                return {
+                    "ok": True,
+                    "draft": True,
+                    "targetId": tid,
+                    "tabUrl": resolved_url,
+                    "targetTab": "Gemini Web",
+                    "elapsedMs": int((time.monotonic() - t0) * 1000),
+                    "attachedFiles": (upload or {}).get("files", []),
+                    "appliedModel": sel_info.get("appliedModel"),
+                    "appliedThinking": sel_info.get("appliedThinking"),
+                    "selectionNote": sel_info.get("note", ""),
+                }
 
             if not await self._wait_send_ready(sid, 60.0 if files else 5.0) and files:
                 return {"ok": False, "error": "ไฟล์ยังอัปโหลดไม่เสร็จ (ปุ่มส่งยังถูกปิดเกิน 60 วินาที)"}
@@ -1224,9 +1270,9 @@ class HardenedChromeClient(ChromeClient):
         }
 
     # ── Google Cloud Studio (Gemini 4 Carbon) Persistent Pipe ───────────────
-    async def find_and_attach_carbon(self):
+    async def find_and_attach_carbon(self, target_id: Optional[str] = None, tab_url: Optional[str] = None):
         """ค้นหาและเกาะแท็บ Google Cloud Studio (Carbon) แบบค้าง Session"""
-        if self.carbon_session_id and self.carbon_target_id:
+        if not target_id and not tab_url and self.carbon_session_id and self.carbon_target_id:
             try:
                 url = await self.eval_js(self.carbon_session_id, "window.location.href", timeout=5.0)
                 if url and "agent-platform/studio" in url:
@@ -1236,20 +1282,18 @@ class HardenedChromeClient(ChromeClient):
             await self._detach(self.carbon_session_id)
             self.carbon_session_id = self.carbon_target_id = None
 
-        tabs = await self.get_tabs()
-        tab = next(
-            (t for t in tabs if t.get("type") == "page" and "agent-platform/studio" in t.get("url", "")),
-            None,
+        tid, sid, url = await self._resolve_tab_target(
+            lambda tabs: next(
+                (t for t in tabs if t.get("type") == "page" and "agent-platform/studio" in t.get("url", "")),
+                None,
+            ),
+            target_id=target_id,
+            tab_url=tab_url,
+            not_found_msg="ไม่พบแท็บ Google Cloud Studio (agent-platform/studio) ใน Chrome",
         )
-        if not tab:
-            raise CDPError("ไม่พบแท็บ Google Cloud Studio (agent-platform/studio) ใน Chrome")
-
-        tid = tab["targetId"]
-        sid = await self.attach_tab(tid)
-        if not sid:
-            raise CDPError("ไม่สามารถ Attach เข้าแท็บ Google Cloud Studio ได้")
-        self.carbon_target_id, self.carbon_session_id = tid, sid
-        return tid, sid, tab.get("url", "")
+        if not target_id and not tab_url:
+            self.carbon_target_id, self.carbon_session_id = tid, sid
+        return tid, sid, url
 
     async def _read_carbon_state(self, sid: str, timeout: float = 10.0) -> Dict[str, Any]:
         st = await self.eval_js(sid, _CARBON_STATE_JS, timeout=timeout)
@@ -1262,10 +1306,13 @@ class HardenedChromeClient(ChromeClient):
         prompt_text: str,
         files: Optional[List[str]] = None,
         timeout: float = 600.0,
+        target_id: Optional[str] = None,
+        tab_url: Optional[str] = None,
+        draft_only: bool = False,
     ) -> Dict[str, Any]:
         """ส่งคำถามและไฟล์แนบไปยังแท็บ Google Cloud Studio ผ่าน Persistent Session (ใช้ carbon_lock แยกอิสระ)"""
         async with self.carbon_lock:
-            tid, sid, url = await self.find_and_attach_carbon()
+            tid, sid, url = await self.find_and_attach_carbon(target_id=target_id, tab_url=tab_url)
             t0 = time.monotonic()
 
             # 1. ตรวจสอบไฟล์ตาม Path Jail และ Sensitive Filter
@@ -1327,6 +1374,17 @@ class HardenedChromeClient(ChromeClient):
             type_res = await self.eval_js(sid, js_type, timeout=10.0)
             if not type_res or not type_res.get("ok"):
                 return {"ok": False, "error": f"ไม่สามารถป้อนข้อความลงหน้า Studio ได้: {type_res}"}
+
+            if draft_only:
+                return {
+                    "ok": True,
+                    "draft": True,
+                    "targetId": tid,
+                    "tabUrl": url,
+                    "targetTab": "Google Cloud Studio (Carbon)",
+                    "elapsedMs": int((time.monotonic() - t0) * 1000),
+                    "attachedFiles": uploaded_files,
+                }
 
             await asyncio.sleep(0.5)
 

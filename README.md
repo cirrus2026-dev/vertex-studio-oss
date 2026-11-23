@@ -237,9 +237,9 @@ Released under the **MIT License** — free to use, modify, and distribute.
 
 ## 🤝 Using with Multi-Agent Swarms
 
-Yes, **Vertex Studio OSS works with multi-agent Swarms** (verified with parallel Argon + Carbon execution). Keep these operational limits in mind:
+Yes, **Vertex Studio OSS works with multi-agent Swarms** (verified with parallel Argon + Carbon execution, and now supports **Multi-Tab Swarm Routing** & **Draft Mode** in v4.1.0):
 
-1. **Cross-Model Parallelism Only:** `ask_argon` (Gemini Web tab) and `ask_carbon` (Cloud Studio tab) use separate Chrome tabs and locks, so they can run **simultaneously in parallel**. Multiple workers targeting the **same** model will queue sequentially on that tab.
-2. **Keep 1 Tab per Model Open:** If multiple Cloud Studio or Gemini tabs are open in Chrome, CDP attaches to the first matching tab, which can cause it to send to an unintended tab.
+1. **Multi-Tab Routing (`GET /tabs` + `target_id` / `tab_url`):** Call `GET /tabs` to list all open Gemini (`argon`) and Cloud Studio (`carbon`) tabs with their `target_id` and `url`. Pass `target_id` (or `tab_url`) in `POST /ask` or `POST /ask_carbon` so multiple Swarm workers can target different tabs of the same model without colliding.
+2. **Draft Mode (`draft_only: true` or `auto_send: false`):** Pass `draft_only: true` (or `auto_send: false`) in `POST /ask` or `POST /ask_carbon` to attach files and type the prompt without clicking Send.
 3. **Track by `jobId`, Not `latest.md`:** `latest.md` and `latest.status.json` are overwritten by the newest job. Swarm workers must poll their own `jobId` via `check_job(job_id)` or `GET /jobs/{job_id}?wait=30&includeAnswer=1`.
 4. **Use MCP or `dispatch.py`:** Direct HTTP calls without `X-Bridge-Token`, `Host`, and `Origin: http://127.0.0.1:8765` will be rejected with `403 Forbidden`.

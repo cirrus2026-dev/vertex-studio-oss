@@ -4,6 +4,13 @@
 
 ---
 
+## 🚀 เวอร์ชัน 4.1.0 (23 พฤศจิกายน 2026) - Multi-Tab Swarm Routing & Draft Mode
+- **Multi-Tab Swarm Routing (`GET /tabs` + `target_id` / `tab_url`):**
+  - เพิ่ม Endpoint `GET /tabs` ใน `gemini_bridge_server.py` เพื่อแสดงรายการแท็บ Gemini (`argon`) และ Google Cloud Studio (`carbon`) ทั้งหมดที่เปิดอยู่ใน Chrome พร้อม `target_id`, `url`, `title` และ `kind` (รองรับ `?all=1` เพื่อดูทุกแท็บ)
+  - รองรับพารามิเตอร์ `target_id` (หรือ `targetId`) และ `tab_url` (หรือ `tabUrl`) ใน `POST /ask` และ `POST /ask_carbon` (`chrome_cdp_fixes.py`) เพื่อให้ Swarm สามารถส่งงานเข้าหลายแท็บของโมเดลเดียวกันพร้อมกันได้โดยไม่ชนกันและไม่หลงแท็บ
+- **Draft Mode (`draft_only: true` / `auto_send: false`):**
+  - รองรับพารามิเตอร์ `draft_only: true` หรือ `auto_send: false` ใน `POST /ask` และ `POST /ask_carbon` สำหรับแนบไฟล์และพิมพ์พรอมต์ลงช่องข้อความโดยไม่กดส่ง (คืนค่า `{"ok": true, "draft": true, "targetId": ..., "tabUrl": ...}`)
+
 ## 🚀 เวอร์ชัน 4.0.1 (23 พฤศจิกายน 2026) - DOM Extraction Fixes & Auto-Updater
 - **แก้ไขบั๊กท่อดูดคำตอบ Gemini Web (`chrome_cdp.py`):**
   - ข้าม Tag ขยะของ Angular/Google (`sources-carousel-inline`, `source-footnote`, `source-inline-chip`, `response-element`) ใน `walk(node)` ไม่ให้ปนเข้ามาใน `latest.md`
